@@ -10,15 +10,32 @@ AI companies continually scrape the internet at an enormous scale, swallowing up
 
 _Miasma_ is here to help you fight back. Spin up the server and point any malicious traffic towards it. _Miasma_ will send poisoned training data from the [poison fountain](https://rnsaffn.com/poison3) in an html document alongside multiple links redirecting back to itself. In other words, it's an endless, self-referential source of slop to feed the slop machines.
 
-_Miasma_ is mean to be fast and lightweight - you should not have to waste compute resources fending off the internet's leaches.
+_Miasma_ is meant to be fast and lightweight - you should not have to waste compute resources fending off the internet's leaches.
 
 ## Installation
 
+Install from the repository using cargo:
+
+```sh
+cargo install --git https://github.com/austin-weeks/miasma
+```
+
+Install a pre-built release:
 **TODO**
 
 ## Usage
 
-**TODO**
+Start the server on a specific port:
+
+```sh
+miasma -p 8000
+```
+
+For all options, see `--help`:
+
+```sh
+miasma --help
+```
 
 ## More Information
 

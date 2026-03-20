@@ -1,3 +1,4 @@
-mod args;
+mod config;
+pub mod routes;
 
-pub use args::MiasmaArgs;
+pub use config::MiasmaConfig;
