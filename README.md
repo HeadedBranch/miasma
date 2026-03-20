@@ -1,6 +1,7 @@
 # 🕳️ Miasma
 
 [![No AI](https://custom-icon-badges.demolab.com/badge/No%20AI-2f2f2f?logo=non-ai&logoColor=white&logoSize=auto)](#)
+[![CI](https://github.com/austin-weeks/miasma/actions/workflows/CI.yml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/CI.yml)
 
 > [!NOTE]
 > This is a work in progress. When it's ready, well, this NOTE won't be here.
