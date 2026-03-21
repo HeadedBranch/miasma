@@ -1,7 +1,8 @@
 # 🕳️ Miasma
 
 [![No AI](https://custom-icon-badges.demolab.com/badge/No%20AI-2f2f2f?logo=non-ai&logoColor=white&logoSize=auto)](#)
-[![CI](https://github.com/austin-weeks/miasma/actions/workflows/CI.yml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/CI.yml)
+[![Checks](https://github.com/austin-weeks/miasma/actions/workflows/Checks.yaml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/Checks.yaml)
+[![Build](https://github.com/austin-weeks/miasma/actions/workflows/CD.yaml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/CD.yaml)
 
 > [!NOTE]
 > This is a work in progress. When it's ready, well, this NOTE won't be here.
@@ -20,8 +21,7 @@ Install from the repository using cargo:
 cargo install --git https://github.com/austin-weeks/miasma
 ```
 
-Install a pre-built release:
-**TODO**
+Or, download a pre-built binary from [releases](https://github.com/austin-weeks/miasma/releases).
 
 ## Usage
 
