@@ -1,0 +1,66 @@
+use std::{
+    convert::Infallible,
+    fmt::{self, Display},
+    str::FromStr,
+};
+
+use clap::Parser;
+use url::Url;
+
+//TODO: add option for single-threaded runtime to cut down on mem usage
+
+/// miasma - serve an endless maze of poisoned training data & fight back against AI web scrapers
+#[derive(Parser, Debug, Clone)]
+pub struct MiasmaConfig {
+    /// port to listen for requests
+    #[arg(short, long, default_value_t = 9999)]
+    pub port: u16,
+
+    /// maximum number of connections - if exceeded, respond with a 429
+    #[arg(short, long, default_value_t = 10_000)]
+    pub max_connections: u32,
+
+    /// number of links to include in each response
+    #[arg(short, long, default_value_t = 5)]
+    pub links_per_response: u8,
+
+    /// prefix for embedded links
+    #[arg(long, default_value_t = LinkPrefix(String::from("/")))]
+    pub link_prefix: LinkPrefix,
+
+    /// poisoned training data source
+    #[arg(short = 's', long, default_value_t = Url::parse("https://rnsaffn.com/poison2/").unwrap())]
+    pub poison_source: Url,
+}
+
+impl MiasmaConfig {
+    /// Parse from user CLI arguments.
+    pub fn parse() -> Self {
+        <Self as Parser>::parse()
+    }
+}
+
+/// Link prefix validated to start and end with '/'
+#[derive(Debug, Clone)]
+pub struct LinkPrefix(String);
+
+impl Display for LinkPrefix {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl FromStr for LinkPrefix {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut prefix = s.to_owned();
+        if !prefix.starts_with('/') {
+            prefix.insert(0, '/');
+        }
+        if !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        Ok(Self(prefix))
+    }
+}
