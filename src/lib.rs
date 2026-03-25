@@ -1,12 +1,21 @@
 mod config;
 mod routes;
+mod version_check;
 
 pub use config::MiasmaConfig;
+pub use version_check::check_for_new_version;
 
 use axum::{Router, body::Body, http::Request, routing::get};
 use reqwest::header::ACCEPT_ENCODING;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+
+const USER_AGENT: &str = concat!(
+    env!("CARGO_PKG_NAME"),
+    "/",
+    env!("CARGO_PKG_VERSION"),
+    " (github.com/austin-weeks/miasma)"
+);
 
 /// Build a new `axum::Router` for miasma's routes.
 pub fn new_miasma_router(config: &'static MiasmaConfig) -> Router {

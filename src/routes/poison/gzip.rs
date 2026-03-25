@@ -12,7 +12,7 @@ const COMPRESS_BUFFER_SIZE: usize = 1024 * 4;
 pub fn gzip_stream(
     stream: impl Stream<Item = Result<Bytes, reqwest::Error>>,
 ) -> impl Stream<Item = Result<Bytes, io::Error>> {
-    let stream = stream.map_err(|e| io::Error::new(io::ErrorKind::Other, e));
+    let stream = stream.map_err(io::Error::other);
     let reader = StreamReader::new(stream);
     let buf = BufReader::with_capacity(COMPRESS_BUFFER_SIZE, reader);
     let encoder = GzipEncoder::with_quality(buf, Level::Fastest);

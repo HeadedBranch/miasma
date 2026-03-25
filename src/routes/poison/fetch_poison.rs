@@ -4,15 +4,13 @@ use reqwest::{Client, Error};
 use std::{sync::LazyLock, time::Duration};
 use url::Url;
 
+use crate::USER_AGENT;
+
 static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .gzip(true) // Poison Fountain serves gzipped data
         .timeout(Duration::from_secs(5))
-        .user_agent(concat!(
-            env!("CARGO_PKG_NAME"),
-            "/",
-            env!("CARGO_PKG_VERSION")
-        ))
+        .user_agent(USER_AGENT)
         .build()
         .expect("should be able to build client")
 });

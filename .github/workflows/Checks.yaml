@@ -8,6 +8,8 @@ on:
 jobs:
   Checks-and-Tests:
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-Dwarnings"
     steps:
       - uses: actions/checkout@v6
 
