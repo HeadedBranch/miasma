@@ -11,7 +11,7 @@ use url::Url;
 #[derive(Parser, Debug, Clone)]
 #[command(
     version,
-    about = "Serve an endless maze of poisoned training data. Fight back agains AI web scrapers."
+    about = "Serve an endless maze of poisoned training data. Fight back against AI web scrapers."
 )]
 pub struct MiasmaConfig {
     /// port to listen for requests

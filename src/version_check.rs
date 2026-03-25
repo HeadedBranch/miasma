@@ -1,3 +1,4 @@
+use colored::Colorize;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -32,8 +33,12 @@ pub async fn check_for_new_version() {
 
         if VERSION != latest {
             eprintln!("\n------- New Version Available -------");
-            eprintln!("Installed ({VERSION}) -> Latest ({latest})");
-            eprintln!("Update with `cargo install miasma`");
+            eprintln!(
+                "Installed ({}) -> Latest ({})",
+                VERSION.red(),
+                latest.green()
+            );
+            eprintln!("To update, run: {}", "cargo install miasma".blue());
             eprintln!("-------------------------------------\n");
         }
 

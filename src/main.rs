@@ -1,13 +1,16 @@
 use anyhow::Context;
-use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
+use colored::Colorize;
 use std::sync::LazyLock;
 
-// TODO: add async method to check version and report to user if a newer version can be installed
+use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
+
 // TODO: auto update cargo pacakge version in CD
 
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
 fn main() -> anyhow::Result<()> {
+    eprintln!("{}\n", "Starting Miasma...".green());
+
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("miasma-thread")
@@ -21,19 +24,16 @@ fn main() -> anyhow::Result<()> {
             let addr = format!("{}:{}", CONFIG.host, CONFIG.port);
             let listener = tokio::net::TcpListener::bind(&addr)
                 .await
-                .with_context(|| format!("could not bind to {addr}"))?;
+                .with_context(|| format!("could not bind to {addr}").red())?;
 
             eprintln!(
-                "Listening on '{addr}' with {} max in-flight requests...",
-                CONFIG.max_in_flight
-            );
-            eprintln!(
-                "Serving poisoned training data from '{}' with {} nested links per response...",
-                CONFIG.poison_source, CONFIG.link_count
+                "Listening on {} with {} max in-flight requests. Serving poisoned training data from {} with {} links per response...",
+                addr.cyan(), CONFIG.max_in_flight.to_string().cyan(),
+                CONFIG.poison_source.to_string().cyan(), CONFIG.link_count.to_string().cyan()
             );
 
             axum::serve(listener, app)
                 .await
-                .with_context(|| "server exited with an unexpected error")
+                .with_context(|| "server exited with an unexpected error".red())
         })
 }
