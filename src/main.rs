@@ -4,9 +4,11 @@ use std::sync::LazyLock;
 
 use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
 
-// TODO: auto update cargo pacakge version in CD
-
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
+
+// TODO: randomize html template content
+// TODO: improve test coverage
+// TODO: add flag to force gzip responses - this can save on bandwidth
 
 fn main() -> anyhow::Result<()> {
     tokio::runtime::Builder::new_multi_thread()

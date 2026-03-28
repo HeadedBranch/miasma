@@ -92,7 +92,7 @@ This will match all variations of the `/bots` path -> `/bots`, `/bots/`, `/bots/
 
 Lastly, we'll start _Miasma_ and specify `/bots` as the link prefix. This instructs _Miasma_ to start links with `/bots/`, which ensures scrapers are properly routed through our _Nginx_ proxy back to _Miasma_.
 
-We'll also limit the number of max in-flight connections to 50. At 50 connections, we can expect 30-40 MB peak memory usage. Note that any requests exceeding this limit will immediately receive a **429** response rather than being added to a queue.
+We'll also limit the number of max in-flight connections to 50. At 50 connections, we can expect 50-60 MB peak memory usage. Note that any requests exceeding this limit will immediately receive a **429** response rather than being added to a queue.
 
 ```sh
 miasma --link-prefix '/bots' -p 9855 -c 50

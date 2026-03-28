@@ -26,9 +26,8 @@ pub async fn stream_poison(
         .error_for_status()?
         .bytes_stream();
 
-    // TODO: escape HTML sequences in the poison string
-    // It's possible that the poison source will send JavaScript within `<script>` tags, which will
-    // execute in browsers.
-    // Probably a very niche case we shouldn't worry about, but worth documenting...
+    // NOTE: It's possible that the poison source will send JavaScript within `<script>` tags,
+    // which will execute in browsers.
+    // This is a very niche case we probably shouldn't worry about, but worth documenting...
     Ok(stream)
 }
