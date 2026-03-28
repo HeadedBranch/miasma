@@ -27,3 +27,6 @@ jobs:
 
       - name: Run Tests
         run: cargo test
+
+      - name: Verify Publish-Ready
+        run: cargo publish --dry-run

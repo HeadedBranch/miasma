@@ -1,9 +1,10 @@
 name: Release
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
-      tag:
+      version:
+        description: "Tag to push and release. Should match format <major>.<minor>.<patch> with no prefix or suffix."
         required: true
         type: string
 
@@ -11,23 +12,79 @@ permissions:
   contents: write
 
 jobs:
+  Validate-Inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure we're on the main branch
+        run: |
+          if [[ ${{ github.ref_name }} != "main" ]]; then
+            echo "Release workflow must be run on the main branch" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v6
+
+      - name: Ensure passed tag matches package version
+        run: |
+          VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[] | select(.name == "miasma") | .version')
+          if [[ $VERSION != ${{ inputs.version }} ]; then
+            echo "Input tag ${{ inputs.version }} does not match crate version $VERSION found in Cargo.toml" >&2
+            exit 1
+          fi
+
+  Run-Checks:
+    uses: ./.github/workflows/Checks.yaml
+
+  Publish-Crate:
+    needs:
+      - Run-Checks
+      - Validate-Inputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+
+  Push-Tag:
+    needs: Publish-Crate
+    runs-on: ubuntu-latest
+    outputs:
+      github_tag: ${{ steps.push-tag.outputs.github_tag }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: push-tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          NEW_TAG="v${{ inputs.version }}"
+          git tag $NEW_TAG
+          git push origin $NEW_TAG
+          echo "github_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   Build:
+    needs: Push-Tag
     strategy:
       matrix:
         build:
           # (Runner image, binary-name)
           - [ubuntu-latest, miasma-linux-x86_64]
-          - [ubuntu-24.04-arm, miasma-linux-arm64]
+          - [ubuntu-24.04-arm, miasma-linux-ARM64]
           - [macos-latest, miasma-apple-silicon]
           - [macos-26-intel, miasma-macOS-x86_64]
           - [windows-latest, miasma-windows-x86_64.exe]
-          - [windows-11-arm, miasma-windows-arm64.exe]
+          - [windows-11-arm, miasma-windows-ARM64.exe]
     runs-on: ${{ matrix.build[0] }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.Push-Tag.outputs.github_tag }}
 
       - name: Build Binary
         run: cargo build --release
@@ -49,7 +106,9 @@ jobs:
 
   Release:
     runs-on: ubuntu-latest
-    needs: Build
+    needs:
+      - Build
+      - Push-Tag
     steps:
       - name: Download Binaries
         uses: actions/download-artifact@v6
@@ -60,6 +119,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/**/*
-          tag_name: ${{ inputs.tag }}
+          tag_name: ${{ needs.Push-Tag.outputs.github_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
