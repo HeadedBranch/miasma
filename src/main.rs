@@ -23,9 +23,9 @@ fn main() -> anyhow::Result<()> {
 
             // This logic can probably be improved but it is a quick draft, and the compiler is
             // happy with it, should add #[cfg(unix)] and add err handling
-            let is_unix_socket = CONFIG.host.starts_with("unix://");
+            let is_unix_socket = CONFIG.host.starts_with("unix:");
             if  is_unix_socket {
-                let addr = format!("{}", CONFIG.host.strip_prefix("unix://").unwrap());
+                let addr = format!("{}", CONFIG.host.strip_prefix("unix:").unwrap());
                 let listener = tokio::net::UnixListener::bind(&addr)
                 .with_context(|| format!("Could not bind to {addr}").red())?;
                 eprintln!(
