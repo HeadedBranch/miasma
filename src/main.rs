@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
             let app = new_miasma_router(&CONFIG);
             eprintln!("{}\n", "Starting Miasma...".green());
 
-            //tokio::spawn(check_for_new_version());
+            tokio::spawn(check_for_new_version());
 
             // This logic can probably be improved but it is a quick draft, and the compiler is
             // happy with it, should add #[cfg(unix)] and add err handling
