@@ -24,11 +24,6 @@ fn main() -> anyhow::Result<()> {
             if CONFIG.unix_socket {
                 let listener = tokio::net::UnixListener::bind(&addr)
                 .with_context(|| format!("Could not bind to {addr}").red())?;
-                eprintln!(
-                    "Listening on {} with {} max in-flight requests. Serving poisoned training data from {} with {} links per response...",
-                    addr.cyan(), CONFIG.max_in_flight.to_string().cyan(),
-                    CONFIG.poison_source.to_string().cyan(), CONFIG.link_count.to_string().cyan()
-                );
                 CONFIG.print_config_info();
                 axum::serve(listener, app)
                     .await
@@ -37,11 +32,6 @@ fn main() -> anyhow::Result<()> {
                 let listener = tokio::net::TcpListener::bind(&addr)
                 .await
                 .with_context(|| format!("could not bind to {addr}").red())?;
-                eprintln!(
-                    "Listening on {} with {} max in-flight requests. Serving poisoned training data from {} with {} links per response...",
-                    addr.cyan(), CONFIG.max_in_flight.to_string().cyan(),
-                    CONFIG.poison_source.to_string().cyan(), CONFIG.link_count.to_string().cyan()
-                );
                 CONFIG.print_config_info();
                 axum::serve(listener, app)
                     .await
