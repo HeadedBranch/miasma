@@ -46,6 +46,11 @@ pub struct MiasmaConfig {
     /// Poisoned training data source
     #[arg(long, default_value_t = Url::parse("https://rnsaffn.com/poison2/").unwrap())]
     pub poison_source: Url,
+
+    /// If a unix socket is used
+    #[cfg(unix)]
+    #[arg(long, default_value_t = false)]
+    pub unix_socket: bool,
 }
 
 impl MiasmaConfig {
@@ -79,7 +84,11 @@ impl MiasmaConfig {
 
     /// Get the full 'host:port' address.
     pub fn address(&self) -> String {
-        format!("{}:{}", self.host, self.port)
+        if self.unix_socket {
+            format!("{}", self.host)
+        } else {
+            format!("{}:{}", self.host, self.port)
+        }
     }
 }
 

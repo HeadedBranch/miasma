@@ -18,10 +18,12 @@ fn main() -> anyhow::Result<()> {
 
             tokio::spawn(check_for_new_version());
 
+<<<<<<< HEAD
             // This logic can probably be improved but it is a quick draft, and the compiler is
             // happy with it, should add #[cfg(unix)] and add err handling
-            let addr = CONFIG.address();
-            if CONFIG.unix_socket {
+            let is_unix_socket = CONFIG.host.starts_with("unix:");
+            if  is_unix_socket {
+                let addr = format!("{}", CONFIG.host.strip_prefix("unix:").unwrap());
                 let listener = tokio::net::UnixListener::bind(&addr)
                 .with_context(|| format!("Could not bind to {addr}").red())?;
                 eprintln!(
@@ -29,12 +31,16 @@ fn main() -> anyhow::Result<()> {
                     addr.cyan(), CONFIG.max_in_flight.to_string().cyan(),
                     CONFIG.poison_source.to_string().cyan(), CONFIG.link_count.to_string().cyan()
                 );
-                CONFIG.print_config_info();
                 axum::serve(listener, app)
                     .await
                     .with_context(|| "server exited with an unexpected error".red())
             } else {
+                let addr = format!("{}:{}", CONFIG.host, CONFIG.port);
                 let listener = tokio::net::TcpListener::bind(&addr)
+=======
+            let addr = CONFIG.address();
+            let listener = tokio::net::TcpListener::bind(&addr)
+>>>>>>> main
                 .await
                 .with_context(|| format!("could not bind to {addr}").red())?;
                 eprintln!(
@@ -42,10 +48,15 @@ fn main() -> anyhow::Result<()> {
                     addr.cyan(), CONFIG.max_in_flight.to_string().cyan(),
                     CONFIG.poison_source.to_string().cyan(), CONFIG.link_count.to_string().cyan()
                 );
-                CONFIG.print_config_info();
                 axum::serve(listener, app)
                     .await
                     .with_context(|| "server exited with an unexpected error".red())
             }
+
+<<<<<<< HEAD
+=======
+            CONFIG.print_config_info();
+>>>>>>> main
+
         })
 }
