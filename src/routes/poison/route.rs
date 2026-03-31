@@ -34,7 +34,7 @@ pub async fn serve_poison(
         },
     };
 
-    let poison = match stream_poison(&config.poison_source).await {
+    let poison = match stream_poison(&config.poison_source, config.unsafe_allow_html).await {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Error fetching from {}: {e}", config.poison_source);
@@ -44,7 +44,7 @@ pub async fn serve_poison(
 
     let should_gzip = client_accepts_gzip || config.force_gzip;
 
-    let stream = html_builder::POSION_PAGE.build_html_stream(
+    let stream = html_builder::POISON_PAGE.build_html_stream(
         poison,
         config.link_count,
         &config.link_prefix,

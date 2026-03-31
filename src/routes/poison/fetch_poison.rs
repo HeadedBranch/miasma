@@ -1,10 +1,12 @@
+use std::{pin::pin, sync::LazyLock, time::Duration};
+
+use async_stream::stream;
 use bytes::Bytes;
-use futures::Stream;
-use reqwest::{Client, Error};
-use std::{sync::LazyLock, time::Duration};
+use futures::{Stream, StreamExt, TryStreamExt};
+use reqwest::Client;
 use url::Url;
 
-use crate::USER_AGENT;
+use crate::{USER_AGENT, utils::html_escaper::escape_html_stream};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     reqwest::Client::builder()
@@ -18,16 +20,26 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
 /// Fetch poisoned training data.
 pub async fn stream_poison(
     poison_source: &Url,
-) -> Result<impl Stream<Item = Result<Bytes, Error>>, Error> {
-    let stream = CLIENT
+    disable_html_escaping: bool,
+) -> Result<impl Stream<Item = Result<Bytes, anyhow::Error>>, anyhow::Error> {
+    let mut poison_stream = CLIENT
         .get(poison_source.clone())
         .send()
         .await?
         .error_for_status()?
-        .bytes_stream();
+        .bytes_stream()
+        .map_err(anyhow::Error::from);
 
-    // NOTE: It's possible that the poison source will send JavaScript within `<script>` tags,
-    // which will execute in browsers.
-    // This is a very niche case we probably shouldn't worry about, but worth documenting...
-    Ok(stream)
+    Ok(stream! {
+        if disable_html_escaping {
+            while let Some(chunk) = poison_stream.next().await {
+                yield chunk;
+            }
+        } else {
+            let mut sanitized = pin!(escape_html_stream(poison_stream));
+            while let Some(chunk) = sanitized.next().await {
+                yield chunk;
+            }
+        }
+    })
 }

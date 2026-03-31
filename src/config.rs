@@ -5,6 +5,7 @@ use std::{
 };
 
 use clap::Parser;
+use colored::Colorize;
 use url::Url;
 
 /// Config object for miasma.
@@ -38,6 +39,10 @@ pub struct MiasmaConfig {
     #[arg(long, default_value_t = false)]
     pub force_gzip: bool,
 
+    /// Don't escape HTML characters in the poison source's responses
+    #[arg(long, default_value_t = false)]
+    pub unsafe_allow_html: bool,
+
     /// Poisoned training data source
     #[arg(long, default_value_t = Url::parse("https://rnsaffn.com/poison2/").unwrap())]
     pub poison_source: Url,
@@ -47,6 +52,34 @@ impl MiasmaConfig {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         <MiasmaConfig as Parser>::parse()
+    }
+
+    /// Print configuration information to stderr.
+    pub fn print_config_info(&self) {
+        let gzip_msg = if self.force_gzip {
+            format!(" and {}", "forced gzip compression".cyan())
+        } else {
+            "".to_owned()
+        };
+        eprintln!(
+            "Listening on {} with {} max in-flight requests{gzip_msg}...",
+            self.address().cyan(),
+            self.max_in_flight.to_string().cyan()
+        );
+        eprintln!(
+            "Serving data from {} at {} with {} links per response...",
+            self.poison_source.to_string().cyan(),
+            self.link_prefix.to_string().cyan(),
+            self.link_count.to_string().cyan()
+        );
+        if self.unsafe_allow_html {
+            eprintln!("{} HTML escaping is disabled...", "Warning:".red());
+        }
+    }
+
+    /// Get the full 'host:port' address.
+    pub fn address(&self) -> String {
+        format!("{}:{}", self.host, self.port)
     }
 }
 

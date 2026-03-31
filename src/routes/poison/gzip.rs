@@ -10,7 +10,7 @@ const COMPRESS_BUFFER_SIZE: usize = 1024 * 4;
 
 /// Compresses the poison stream with gzip encoding.
 pub fn gzip_stream(
-    stream: impl Stream<Item = Result<Bytes, reqwest::Error>>,
+    stream: impl Stream<Item = Result<Bytes, anyhow::Error>>,
 ) -> impl Stream<Item = Result<Bytes, io::Error>> {
     let stream = stream.map_err(io::Error::other);
     let reader = StreamReader::new(stream);

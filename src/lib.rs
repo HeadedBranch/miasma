@@ -1,5 +1,6 @@
 mod config;
 mod routes;
+mod utils;
 mod version_check;
 
 pub use config::MiasmaConfig;

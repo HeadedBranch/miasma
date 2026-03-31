@@ -6,9 +6,6 @@ use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
 
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
-// TODO: randomize html template content
-// TODO: improve test coverage
-
 fn main() -> anyhow::Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -35,9 +32,9 @@ fn main() -> anyhow::Result<()> {
                 );
                 axum::serve(listener, app)
                     .await
-                    .with_context(|| "server exited with an unexpected error".red())
+                    .with_context(|| "server exited with an unexpected error".red());
             } else {
-                let addr = format!("{}:{}", CONFIG.host, CONFIG.port);
+                let addr = CONFIG.address();
                 let listener = tokio::net::TcpListener::bind(&addr)
                 .await
                 .with_context(|| format!("could not bind to {addr}").red())?;
@@ -48,9 +45,10 @@ fn main() -> anyhow::Result<()> {
                 );
                 axum::serve(listener, app)
                     .await
-                    .with_context(|| "server exited with an unexpected error".red())
+                    .with_context(|| "server exited with an unexpected error".red());
             }
 
+            CONFIG.print_config_info();
 
         })
 }
