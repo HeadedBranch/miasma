@@ -23,16 +23,20 @@ fn main() -> anyhow::Result<()> {
             let addr = CONFIG.address();
             if CONFIG.unix_socket {
                 let listener = tokio::net::UnixListener::bind(&addr)
-                .with_context(|| format!("Could not bind to {addr}").red())?;
+                    .with_context(|| format!("Could not bind to {addr}").red())?;
+
                 CONFIG.print_config_info();
+
                 axum::serve(listener, app)
                     .await
                     .with_context(|| "server exited with an unexpected error".red())
             } else {
                 let listener = tokio::net::TcpListener::bind(&addr)
-                .await
-                .with_context(|| format!("could not bind to {addr}").red())?;
+                    .await
+                    .with_context(|| format!("could not bind to {addr}").red())?;
+
                 CONFIG.print_config_info();
+
                 axum::serve(listener, app)
                     .await
                     .with_context(|| "server exited with an unexpected error".red())
