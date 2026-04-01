@@ -5,6 +5,7 @@ use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tokio_util::either::Either;
+use tokio::signal::ctrl_c;
 
 use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
 
@@ -64,8 +65,17 @@ fn main() -> anyhow::Result<()> {
 
             CONFIG.print_config_info();
 
-            axum::serve(listener, app)
-                .await
-                .with_context(|| "server exited with an unexpected error".red())
+            tokio::select! {
+                _ = ctrl_c(), if cfg!(unix) && CONFIG.unix_socket => {
+                    if let Err(e) = std::fs::remove_file(CONFIG.host.clone()) {
+                        println!("Error {e} removing {}, please delete it manually", CONFIG.host.cyan());
+                    }
+                    Ok(())
+                }
+
+                main_runner = axum::serve(listener, app) => {
+                        main_runner.with_context(|| "server exited with an unexpected error".red())
+                    }
+            }
         })
 }
