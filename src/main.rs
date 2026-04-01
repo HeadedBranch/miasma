@@ -1,9 +1,10 @@
 use anyhow::Context;
 use colored::Colorize;
 use std::sync::LazyLock;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpListener};
 #[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::{UnixListener, UnixStream, TcpStream};
+#[cfg(unix)]
 use tokio_util::either::Either;
 use tokio::signal::ctrl_c;
 
@@ -15,8 +16,9 @@ static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 // This allows both TcpListener and UnixListener to be used by axum::serve
 // It does this by implementing the trait it requires on a custom type
 // (needed because of orphan rules), I know it looks ugly I wrote it
+#[cfg(unix)]
 struct Listeners (Either<TcpListener, UnixListener>);
-
+#[cfg(unix)]
 impl axum::serve::Listener for Listeners {
     type Io = Either<TcpStream, UnixStream>;
     type Addr = Either<std::net::SocketAddr, tokio::net::unix::SocketAddr>;
@@ -54,7 +56,8 @@ fn main() -> anyhow::Result<()> {
             tokio::spawn(check_for_new_version());
 
             let addr = CONFIG.address();
-            let listener = if cfg!(unix) && CONFIG.unix_socket {
+            #[cfg(unix)]
+            let listener = if CONFIG.unix_socket {
                 Listeners(Either::Right(UnixListener::bind(&addr)
                     .with_context(|| format!("Could not bind to {addr}").red())?))
             } else {
@@ -62,13 +65,21 @@ fn main() -> anyhow::Result<()> {
                     .await
                     .with_context(|| format!("could not bind to {addr}").red())?))
             };
+            #[cfg(not(unix))]
+            let listener = TcpListener::bind(&addr)
+                .await
+                .with_context(|| format!("could not bind to {addr}").red())?;
+
 
             CONFIG.print_config_info();
 
             tokio::select! {
-                _ = ctrl_c(), if cfg!(unix) && CONFIG.unix_socket => {
-                    if let Err(e) = std::fs::remove_file(CONFIG.host.clone()) {
-                        println!("Error {e} removing {}, you may need to delete it manually", CONFIG.host.cyan());
+                _ = ctrl_c(), if cfg!(unix) => {
+                    #[cfg(unix)]
+                    if CONFIG.unix_socket {
+                        if let Err(e) = std::fs::remove_file(CONFIG.host.clone()) {
+                            println!("Error {e} removing {}, you may need to delete it manually", CONFIG.host.cyan());
+                        }
                     }
                     Ok(())
                 }

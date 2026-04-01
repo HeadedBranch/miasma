@@ -83,12 +83,17 @@ impl MiasmaConfig {
     }
 
     /// Get the full 'host:port' address.
+    #[cfg(unix)]
     pub fn address(&self) -> String {
-        if cfg!(unix) && self.unix_socket {
+        if self.unix_socket {
             format!("{}", self.host)
         } else {
             format!("{}:{}", self.host, self.port)
         }
+    }
+    #[cfg(not(unix))]
+    pub fn address(&self) -> String {
+        format!("{}:{}", self.host, self.port)
     }
 }
 
