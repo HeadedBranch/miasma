@@ -1,7 +1,9 @@
 use anyhow::Context;
 use colored::Colorize;
 use std::sync::LazyLock;
-use tokio::net::{UnixListener, TcpListener, UnixStream, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
 use tokio_util::either::Either;
 
 use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
