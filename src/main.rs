@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
             tokio::spawn(check_for_new_version());
 
             let addr = CONFIG.address();
-            let listener: Listeners = if cfg!(unix) && CONFIG.unix_socket {
+            let listener = if cfg!(unix) && CONFIG.unix_socket {
                 Listeners(Either::Right(UnixListener::bind(&addr)
                     .with_context(|| format!("Could not bind to {addr}").red())?))
             } else {
