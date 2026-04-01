@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
             CONFIG.print_config_info();
 
             tokio::select! {
-                _ = ctrl_c(), if cfg!(unix) => {
+                _ = ctrl_c() => {
                     #[cfg(unix)]
                     if CONFIG.unix_socket {
                         if let Err(e) = std::fs::remove_file(CONFIG.host.clone()) {
