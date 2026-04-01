@@ -1,14 +1,14 @@
 use anyhow::Context;
 use colored::Colorize;
 use std::sync::LazyLock;
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 #[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream, TcpStream};
+use tokio::net::{TcpStream, UnixListener, UnixStream};
+use tokio::signal::ctrl_c;
 #[cfg(unix)]
 use tokio_util::either::Either;
-use tokio::signal::ctrl_c;
 
-use miasma::{MiasmaConfig, check_for_new_version, new_miasma_router};
+use miasma::{check_for_new_version, new_miasma_router, MiasmaConfig};
 
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
@@ -17,7 +17,7 @@ static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 // It does this by implementing the trait it requires on a custom type
 // (needed because of orphan rules), I know it looks ugly I wrote it
 #[cfg(unix)]
-struct Listeners (Either<TcpListener, UnixListener>);
+struct Listeners(Either<TcpListener, UnixListener>);
 #[cfg(unix)]
 impl axum::serve::Listener for Listeners {
     type Io = Either<TcpStream, UnixStream>;
