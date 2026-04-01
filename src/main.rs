@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
             tokio::select! {
                 _ = ctrl_c(), if cfg!(unix) && CONFIG.unix_socket => {
                     if let Err(e) = std::fs::remove_file(CONFIG.host.clone()) {
-                        println!("Error {e} removing {}, please delete it manually", CONFIG.host.cyan());
+                        println!("Error {e} removing {}, you may need to delete it manually", CONFIG.host.cyan());
                     }
                     Ok(())
                 }
