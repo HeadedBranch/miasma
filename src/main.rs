@@ -56,5 +56,5 @@ fn main() -> anyhow::Result<()> {
             println!("Error {e} removing {}, you may need to delete it manually", CONFIG.host.cyan());
         }
     }
-app_result
+    app_result
 }
