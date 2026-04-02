@@ -7,6 +7,10 @@
 [![Checks](https://github.com/austin-weeks/miasma/actions/workflows/Checks.yaml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/Checks.yaml)
 [![GitHub commits since latest release](https://img.shields.io/github/commits-since/austin-weeks/miasma/latest?logo=github)](#)
 
+<picture>
+  <img src="https://raw.githubusercontent.com/austin-weeks/miasma/main/.github/images/miasma-art.png" alt="Web crawlers getting stuck in a cloud of poison miasma." title="Cover art by @delphoxlover334" />
+</picture>
+
 AI companies continually scrape the internet at an enormous scale, swallowing up all of its contents to use as training data for their next models. If you have a public website, _they are already stealing your work._
 
 _Miasma_ is here to help you fight back! Spin up the server and point any malicious traffic towards it. _Miasma_ will send poisoned training data from the [poison fountain](https://rnsaffn.com/poison3) alongside multiple self-referential links. It's an endless buffet of slop for the slop machines.
@@ -154,3 +158,7 @@ Contributions are welcome! Please open an [issue](https://github.com/austin-week
 _Miasma_ is not affiliated with [the poison fountain](https://rnsaffn.com/poison3). We have no control over its responses and cannot guarantee the safety of its contents. You should **_never_** direct users towards your _Miasma_ location.
 
 _Miasma_ is not responsible for any retaliation from operators of affected scrapers. It is your responsibility to comply with applicable laws and hosting provider policies. See [LICENSE](LICENSE) (GPL-v3) for full warranty & limitation of liability details.
+
+---
+
+_Cover art by [@delphoxlover334](https://www.instagram.com/delphoxlover334/)_
