@@ -51,6 +51,7 @@ fn main() -> anyhow::Result<()> {
             }
         });
 
+    #[cfg(unix)]
     if let Some(path) = &CONFIG.unix_socket {
         if let Err(e) = std::fs::remove_file(path) {
             println!("Error {e} removing {}, you may need to delete it manually", CONFIG.host.cyan());
