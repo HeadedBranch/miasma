@@ -49,8 +49,8 @@ pub struct MiasmaConfig {
 
     /// If a unix socket is used
     #[cfg(unix)]
-    #[arg(long, default_value_t = false)]
-    pub unix_socket: bool,
+    #[arg(long, default_value = None)]
+    pub unix_socket: Option<String>,
 }
 
 impl MiasmaConfig {
@@ -83,15 +83,6 @@ impl MiasmaConfig {
     }
 
     /// Get the full 'host:port' address.
-    #[cfg(unix)]
-    pub fn address(&self) -> String {
-        if self.unix_socket {
-            format!("{}", self.host)
-        } else {
-            format!("{}:{}", self.host, self.port)
-        }
-    }
-    #[cfg(not(unix))]
     pub fn address(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
