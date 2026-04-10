@@ -10,7 +10,7 @@ use uuid::Uuid;
 use super::{LinkSettings, LinkSettingsInner};
 use crate::{MiasmaStream, QueryParams};
 
-pub const POISON_PAGE: HtmlBuilder = HtmlBuilder::new(include_str!("index.html"));
+pub const POISON_PAGE: HtmlBuilder = HtmlBuilder::new(include_str!("../templates/index.html"));
 
 pub struct HtmlBuilder {
     start_to_poison: &'static str,

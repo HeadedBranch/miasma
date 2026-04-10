@@ -1,11 +1,12 @@
 mod app;
 mod config;
-mod routes;
+mod poison;
+mod router;
 mod utils;
 mod version_check;
 
-use routes::QueryParams;
-use routes::new_miasma_router;
+use router::QueryParams;
+use router::new_miasma_router;
 
 pub use app::Miasma;
 pub use config::MiasmaConfig;

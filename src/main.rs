@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::sync::LazyLock;
 
 use miasma::{Miasma, MiasmaConfig, check_for_new_version};
@@ -18,8 +17,6 @@ fn main() -> anyhow::Result<()> {
                     .await
                     .expect("Failed to register shutdown listener");
             };
-
-            eprintln!("{}\n", "Starting Miasma...".green());
 
             let miasma = Miasma::new(&CONFIG).await?;
 

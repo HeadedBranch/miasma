@@ -1,10 +1,3 @@
-mod poison;
-
-pub use poison::LinkSettings;
-pub use poison::serve_poison;
-
-use crate::{MiasmaConfig, routes};
-
 use std::sync::Arc;
 
 use axum::{
@@ -17,6 +10,9 @@ use axum::{
 use reqwest::{StatusCode, header};
 use serde::Deserialize;
 use tokio::sync::{Semaphore, TryAcquireError};
+
+use crate::MiasmaConfig;
+use crate::poison::{self, LinkSettings};
 
 #[derive(Deserialize)]
 pub struct QueryParams {
@@ -68,7 +64,7 @@ pub fn new_miasma_router(config: &'static MiasmaConfig) -> Router {
 
         let link_settings = LinkSettings::next(config, current_depth);
 
-        routes::serve_poison(config, in_flight_permit, gzip_response, link_settings)
+        poison::serve_poison(config, in_flight_permit, gzip_response, link_settings)
             .await
             .into_response()
     }))
