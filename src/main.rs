@@ -1,6 +1,9 @@
+mod art;
+mod version_check;
+
 use std::sync::LazyLock;
 
-use miasma::{Miasma, MiasmaConfig, check_for_new_version};
+use miasma::{Miasma, MiasmaConfig};
 
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
@@ -11,7 +14,7 @@ fn main() -> anyhow::Result<()> {
         .build()
         .unwrap()
         .block_on(async {
-            tokio::spawn(check_for_new_version());
+            tokio::spawn(version_check::check_for_new_version());
             let shutdown_signal = async {
                 tokio::signal::ctrl_c()
                     .await
@@ -19,6 +22,8 @@ fn main() -> anyhow::Result<()> {
             };
 
             let miasma = Miasma::new(&CONFIG).await?;
+
+            art::print_miasma_ascii_art();
 
             CONFIG.print_config_info();
 

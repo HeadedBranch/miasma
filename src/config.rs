@@ -69,33 +69,33 @@ impl MiasmaConfig {
     /// Print configuration information to stderr.
     pub fn print_config_info(&self) {
         let gzip_msg = if self.force_gzip {
-            format!(" and {}", "forced gzip compression".cyan())
+            format!(" and {}", "forced gzip compression".blue())
         } else {
             "".to_owned()
         };
         #[cfg(unix)]
         let binding = match &self.unix_socket {
-            Some(socket) => socket.cyan(),
-            None => self.address().cyan(),
+            Some(socket) => socket.blue(),
+            None => self.address().blue(),
         };
         #[cfg(not(unix))]
-        let binding = self.address().cyan();
+        let binding = self.address().blue();
 
         eprintln!(
             "Listening on {} with {} max in-flight requests{gzip_msg}...",
             binding,
-            self.max_in_flight.to_string().cyan()
+            self.max_in_flight.to_string().blue()
         );
         eprintln!(
             "Serving poisoned training data from {} at {} with {} links per response and a max depth of {}...",
-            self.poison_source.to_string().cyan(),
-            self.link_prefix.to_string().cyan(),
-            self.link_count.to_string().cyan(),
-            self.max_depth.to_string().cyan(),
+            self.poison_source.to_string().blue(),
+            self.link_prefix.to_string().blue(),
+            self.link_count.to_string().blue(),
+            self.max_depth.to_string().blue(),
         );
 
         let est_pages_per_bot = match self.max_depth.0 {
-            None => "infinite".cyan(),
+            None => "infinite".blue(),
             Some(depth) => calculate_nodes::page_count_per_bot(self.link_count, depth)
                 .map(|n| n.to_string().green())
                 .unwrap_or_else(|| "too big!".red()),

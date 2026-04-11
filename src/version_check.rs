@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::io::Write;
 use std::time::Duration;
 
-use crate::USER_AGENT;
+use miasma::MIASMA_USER_AGENT;
 
 #[derive(Deserialize)]
 struct CrateInfo {
@@ -21,7 +21,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub async fn check_for_new_version() {
     let _res: anyhow::Result<()> = async {
         let resp = reqwest::Client::builder()
-            .user_agent(USER_AGENT)
+            .user_agent(MIASMA_USER_AGENT)
             .timeout(Duration::from_secs(5))
             .build()?
             .get("https://crates.io/api/v1/crates/miasma")
