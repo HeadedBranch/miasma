@@ -6,7 +6,7 @@ use axum::{
 use reqwest::header;
 use tokio::sync::OwnedSemaphorePermit;
 
-use super::{LinkSettings, fetch_poison::stream_poison, gzip, html_builder};
+use super::{LinkSettings, fetch_poison::stream_poison, gzip, response_builder};
 use crate::config::MiasmaConfig;
 
 /// Miasma's poison serving trap.
@@ -24,8 +24,7 @@ pub async fn serve_poison(
         }
     };
 
-    let stream =
-        html_builder::POISON_PAGE.build_html_stream(poison, link_settings, in_flight_permit);
+    let stream = response_builder::build_response_stream(poison, link_settings, in_flight_permit);
 
     let body_stream = if gzip_response {
         Body::from_stream(gzip::gzip_stream(stream))

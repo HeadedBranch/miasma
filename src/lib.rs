@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod poison;
 mod router;
+mod templates;
 mod utils;
 
 use router::QueryParams;

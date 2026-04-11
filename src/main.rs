@@ -14,6 +14,8 @@ fn main() -> anyhow::Result<()> {
         .build()
         .unwrap()
         .block_on(async {
+            art::print_miasma_ascii_art();
+
             tokio::spawn(version_check::check_for_new_version());
             let shutdown_signal = async {
                 tokio::signal::ctrl_c()
@@ -22,8 +24,6 @@ fn main() -> anyhow::Result<()> {
             };
 
             let miasma = Miasma::new(&CONFIG).await?;
-
-            art::print_miasma_ascii_art();
 
             CONFIG.print_config_info();
 

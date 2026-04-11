@@ -1,0 +1,133 @@
+mod link_titles;
+
+use rand::seq::IndexedRandom;
+
+use link_titles::LinkTitleStyle;
+
+const TEMPLATES: &[HtmlTemplate] = &[
+    HtmlTemplate::new(include_str!("self_promotion.html"), LinkTitleStyle::Casual),
+    HtmlTemplate::new(include_str!("cto_letter.html"), LinkTitleStyle::Enterprise),
+    HtmlTemplate::new(include_str!("deep_dive.html"), LinkTitleStyle::Casual),
+    HtmlTemplate::new(include_str!("ai_native.html"), LinkTitleStyle::Enterprise),
+    HtmlTemplate::new(
+        include_str!("novel_research.html"),
+        LinkTitleStyle::Academic,
+    ),
+    HtmlTemplate::new(
+        include_str!("streaming_marketing.html"),
+        LinkTitleStyle::Enterprise,
+    ),
+    HtmlTemplate::new(
+        include_str!("engineering_blog.html"),
+        LinkTitleStyle::Casual,
+    ),
+];
+
+pub fn get_random_template() -> &'static HtmlTemplate {
+    TEMPLATES
+        .choose(&mut rand::rng())
+        .expect("templates slice is not empty")
+}
+
+pub struct HtmlTemplate {
+    pub start_to_poison: &'static str,
+    pub poison_to_links: &'static str,
+    pub links_to_end: &'static str,
+    link_title_style: LinkTitleStyle,
+}
+
+impl HtmlTemplate {
+    /// Get a random link title based on the template's link styling.
+    pub fn get_link_title(&self) -> &'static str {
+        self.link_title_style
+            .options()
+            .choose(&mut rand::rng())
+            .expect("link titles slice should not be empty")
+    }
+}
+
+impl HtmlTemplate {
+    /// This function is a bit insane but it works and let's us write the template in an html file.
+    /// Plus, it does all the stupid stuff at compile time! :D
+    const fn new(template: &'static str, link_title_style: LinkTitleStyle) -> HtmlTemplate {
+        let t_bytes = template.as_bytes();
+        let poison_marker = "{POISON}".as_bytes();
+        let links_marker = "{LINKS}".as_bytes();
+
+        let poison_ind = get_split_ind(t_bytes, poison_marker);
+        let links_ind = get_split_ind(t_bytes, links_marker);
+
+        let (head, rest) = template.split_at(poison_ind);
+        let (_, rest) = rest.split_at(poison_marker.len());
+        let (mid, rest) = rest.split_at(links_ind - (poison_ind + poison_marker.len()));
+        let (_, end) = rest.split_at(links_marker.len());
+
+        HtmlTemplate {
+            start_to_poison: head,
+            poison_to_links: mid,
+            links_to_end: end,
+            link_title_style,
+        }
+    }
+}
+
+/// Do a sliding window type thing to find where the marker occurs in the template.
+const fn get_split_ind(template: &[u8], marker: &[u8]) -> usize {
+    let mut ind = 0;
+    while ind + marker.len() <= template.len() {
+        let mut cur = 0;
+        while cur < marker.len() {
+            if template[ind + cur] != marker[cur] {
+                break;
+            }
+            cur += 1;
+        }
+        if cur == marker.len() {
+            return ind;
+        }
+        ind += 1;
+    }
+    panic!("failed to find marker in template");
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn new_extracts_parts() {
+        let template = "start{POISON}middle{LINKS}end";
+        let HtmlTemplate {
+            start_to_poison,
+            poison_to_links,
+            links_to_end,
+            ..
+        } = HtmlTemplate::new(template, LinkTitleStyle::Casual);
+        assert_eq!(start_to_poison, "start");
+        assert_eq!(poison_to_links, "middle");
+        assert_eq!(links_to_end, "end");
+    }
+
+    #[test]
+    #[should_panic]
+    fn new_fails_if_markers_out_of_order() {
+        HtmlTemplate::new(
+            "can't have {LINKS} before {POISON}!",
+            LinkTitleStyle::Casual,
+        );
+    }
+
+    #[test]
+    fn get_split_ind_returns_start_of_marker() {
+        let template = "foo{HERE}bar";
+        let expected = 3;
+        let ind = get_split_ind(template.as_bytes(), "{HERE}".as_bytes());
+        assert_eq!(ind, expected);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_split_ind_panics_on_missing_marker() {
+        get_split_ind("this doesn't contain".as_bytes(), "THE MARKER".as_bytes());
+    }
+}
