@@ -1,7 +1,7 @@
 [package]
 name = "miasma"
 description = "Trap malicious AI web scrapers in an endless pit of poisoned training data."
-version = "0.1.22"
+version = "0.2.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/austin-weeks/miasma"
@@ -17,6 +17,7 @@ bytes = "1.11.1"
 clap = { version = "4.6.0", features = ["derive"] }
 colored = "3.1.1"
 futures = "0.3.32"
+rand = "0.10.0"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.50.0", features = ["rt-multi-thread", "signal"] }
 tokio-util = { version = "0.7.18", features = ["io"] }

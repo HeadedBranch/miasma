@@ -1,7 +1,7 @@
 mod fetch_poison;
 mod gzip;
-mod html_builder;
 mod link_settings;
+mod response_builder;
 mod route;
 
 pub use link_settings::LinkSettings;

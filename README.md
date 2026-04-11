@@ -20,16 +20,6 @@ _Miasma_ is very fast and has a minimal memory footprint - you should not have t
 > [!CAUTION]
 > There is inherent risk in deploying this software. Please fully read [configuration](#configuration) and [disclaimer](#disclaimer) before use.
 
-<details>
-  <summary>Sample <em>Miasma</em> Response</summary>
-  <p align="center">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/austin-weeks/miasma/main/.github/images/response-dark.png">
-      <img width="625" src="https://raw.githubusercontent.com/austin-weeks/miasma/main/.github/images/response-light.png" alt="Sample response from Miasma.">
-    </picture>
-  </p>
-</details>
-
 ## Installation
 
 Install with [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) (recommended):
