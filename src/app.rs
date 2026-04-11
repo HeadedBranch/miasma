@@ -80,7 +80,7 @@ impl Miasma {
             && let Err(e) = fs::remove_file(socket)
         {
             // Add a newline so message does not appear smushed up against '^C' in terminal
-            eprintln!("\nFailed to remove {} socket: {e}", socket.cyan());
+            eprintln!("\nFailed to remove {} socket: {e}", socket.blue());
         }
 
         server_result.with_context(|| "server exited with an unexpected error".red())

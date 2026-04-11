@@ -5,13 +5,13 @@ use futures::{StreamExt, TryStreamExt};
 use reqwest::Client;
 use url::Url;
 
-use crate::{MiasmaStream, USER_AGENT, utils::html_escaper::escape_html_stream};
+use crate::{MIASMA_USER_AGENT, MiasmaStream, utils::html_escaper::escape_html_stream};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .gzip(true) // Poison Fountain serves gzipped data
         .timeout(Duration::from_secs(5))
-        .user_agent(USER_AGENT)
+        .user_agent(MIASMA_USER_AGENT)
         .build()
         .expect("should be able to build client")
 });
