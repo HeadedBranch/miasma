@@ -1,13 +1,12 @@
 #[cfg(unix)]
 use std::fs;
 
-use anyhow::Context;
-use colored::Colorize;
 use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::UnixListener;
 
 use crate::MiasmaConfig;
+use crate::MiasmaError;
 use crate::new_miasma_router;
 
 enum Listener {
@@ -22,23 +21,20 @@ pub struct Miasma {
 }
 
 impl Miasma {
-    // TODO: return a custom error type here rather than anyhow::Error
     /// Create a new Miasma server.
-    pub async fn new(config: &'static MiasmaConfig) -> anyhow::Result<Self> {
+    pub async fn new(config: &'static MiasmaConfig) -> Result<Self, MiasmaError> {
         let listener;
 
         #[cfg(unix)]
         if let Some(socket) = &config.unix_socket {
-            listener = Listener::Unix(
-                UnixListener::bind(socket)
-                    .with_context(|| format!("could not bind to {socket}").red())?,
-            );
+            listener =
+                Listener::Unix(UnixListener::bind(socket).map_err(MiasmaError::UnixSocketBind)?);
         } else {
             let addr = config.address();
             listener = Listener::Tcp(
                 TcpListener::bind(&addr)
                     .await
-                    .with_context(|| format!("could not bind to {addr}").red())?,
+                    .map_err(MiasmaError::TcpBind)?,
             );
         }
         #[cfg(not(unix))]
@@ -47,7 +43,7 @@ impl Miasma {
             listener = Listener::Tcp(
                 TcpListener::bind(&addr)
                     .await
-                    .with_context(|| format!("could not bind to {addr}").red())?,
+                    .map_err(MiasmaError::TcpBind)?,
             );
         }
 
@@ -55,7 +51,7 @@ impl Miasma {
     }
 
     /// Start the Miasma server.
-    pub async fn run<S>(self, shutdown_signal: S) -> Result<(), anyhow::Error>
+    pub async fn run<S>(self, shutdown_signal: S) -> Result<(), MiasmaError>
     where
         S: Future<Output = ()> + Send + 'static,
     {
@@ -79,10 +75,11 @@ impl Miasma {
         if let Some(socket) = &self.config.unix_socket
             && let Err(e) = fs::remove_file(socket)
         {
+            use colored::Colorize;
             // Add a newline so message does not appear smushed up against '^C' in terminal
             eprintln!("\nFailed to remove {} socket: {e}", socket.blue());
         }
 
-        server_result.with_context(|| "server exited with an unexpected error".red())
+        server_result.map_err(MiasmaError::ServerRuntime)
     }
 }

@@ -1,7 +1,9 @@
-use colored::Colorize;
-use serde::Deserialize;
+use std::error::Error;
 use std::io::Write;
 use std::time::Duration;
+
+use colored::Colorize;
+use serde::Deserialize;
 
 use miasma::MIASMA_USER_AGENT;
 
@@ -19,7 +21,7 @@ struct CratesIOResponse {
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub async fn check_for_new_version() {
-    let _res: anyhow::Result<()> = async {
+    let _res: Result<(), Box<dyn Error>> = async {
         let resp = reqwest::Client::builder()
             .user_agent(MIASMA_USER_AGENT)
             .timeout(Duration::from_secs(5))

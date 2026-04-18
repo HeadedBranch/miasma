@@ -12,9 +12,9 @@ const COMPRESS_BUFFER_SIZE: usize = 1024 * 4;
 /// Compresses the poison stream with gzip encoding.
 pub fn gzip_stream<E>(stream: impl MiasmaStream<E>) -> impl MiasmaStream<io::Error>
 where
-    E: Into<anyhow::Error>,
+    E: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    let stream = stream.map_err(|e| io::Error::other(anyhow::anyhow!(e)));
+    let stream = stream.map_err(io::Error::other);
     let reader = StreamReader::new(stream);
     let buf = BufReader::with_capacity(COMPRESS_BUFFER_SIZE, reader);
     let encoder = GzipEncoder::with_quality(

@@ -5,7 +5,9 @@ use futures::{StreamExt, TryStreamExt};
 use reqwest::Client;
 use url::Url;
 
-use crate::{MIASMA_USER_AGENT, MiasmaStream, utils::html_escaper::escape_html_stream};
+use crate::{
+    MIASMA_USER_AGENT, MiasmaError, MiasmaStream, utils::html_escaper::escape_html_stream,
+};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     reqwest::Client::builder()
@@ -20,14 +22,14 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
 pub async fn stream_poison(
     poison_source: &Url,
     disable_html_escaping: bool,
-) -> Result<impl MiasmaStream, anyhow::Error> {
+) -> Result<impl MiasmaStream, MiasmaError> {
     let mut poison_stream = CLIENT
         .get(poison_source.clone())
         .send()
         .await?
         .error_for_status()?
         .bytes_stream()
-        .map_err(anyhow::Error::from);
+        .map_err(MiasmaError::from);
 
     Ok(stream! {
         if disable_html_escaping {

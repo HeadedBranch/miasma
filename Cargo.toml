@@ -9,7 +9,6 @@ readme = "README.md"
 exclude = [".github"]
 
 [dependencies]
-anyhow = "1.0.102"
 async-compression = { version = "0.4.41", features = ["gzip"] }
 async-stream = "0.3.6"
 axum = "0.8.8"
@@ -19,6 +18,7 @@ colored = "3.1.1"
 futures = "0.3.32"
 rand = "0.10.0"
 serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.18"
 tokio = { version = "1.50.0", features = ["rt-multi-thread", "signal"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 url = "2.5.8"

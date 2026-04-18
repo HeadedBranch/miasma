@@ -3,11 +3,11 @@ mod version_check;
 
 use std::sync::LazyLock;
 
-use miasma::{Miasma, MiasmaConfig};
+use miasma::{Miasma, MiasmaConfig, MiasmaError};
 
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), MiasmaError> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("miasma-thread")
