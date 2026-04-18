@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod error;
 mod poison;
 mod router;
 mod templates;
@@ -10,6 +11,7 @@ use router::new_miasma_router;
 
 pub use app::Miasma;
 pub use config::MiasmaConfig;
+pub use error::MiasmaError;
 
 use bytes::Bytes;
 use futures::Stream;
@@ -22,5 +24,5 @@ pub const MIASMA_USER_AGENT: &str = concat!(
 );
 
 /// Alias for Stream of `Result<Bytes, E>`
-pub trait MiasmaStream<E = anyhow::Error>: Stream<Item = Result<Bytes, E>> {}
+pub trait MiasmaStream<E = MiasmaError>: Stream<Item = Result<Bytes, E>> {}
 impl<T, E> MiasmaStream<E> for T where T: Stream<Item = Result<Bytes, E>> {}
