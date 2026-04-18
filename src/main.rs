@@ -8,14 +8,17 @@ use miasma::{Miasma, MiasmaConfig, MiasmaError};
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
 fn main() -> Result<(), MiasmaError> {
+    // Print banner as long as the user isn't just checking the version
+    if !std::env::args().any(|arg| arg == "-V" || arg == "--version") {
+        art::print_miasma_ascii_art();
+    }
+
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("miasma-thread")
         .build()
         .unwrap()
         .block_on(async {
-            art::print_miasma_ascii_art();
-
             tokio::spawn(version_check::check_for_new_version());
             let shutdown_signal = async {
                 tokio::signal::ctrl_c()
