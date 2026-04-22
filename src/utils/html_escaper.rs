@@ -1,4 +1,4 @@
-use async_stream::stream;
+use async_stream::try_stream;
 use futures::StreamExt;
 use std::pin::pin;
 
@@ -6,11 +6,11 @@ use crate::MiasmaStream;
 
 /// Escape HTML sequences in the given stream.
 pub fn escape_html_stream(html_stream: impl MiasmaStream) -> impl MiasmaStream {
-    stream! {
+    try_stream! {
         let mut html_stream = pin!(html_stream);
         while let Some(chunk_res) = html_stream.next().await {
             let Ok(mut chunk) = chunk_res else {
-                yield chunk_res;
+                yield chunk_res?;
                 continue;
             };
             loop {
@@ -25,14 +25,14 @@ pub fn escape_html_stream(html_stream: impl MiasmaStream) -> impl MiasmaStream {
                     })
                     .next()
                 else {
-                    yield Ok(chunk);
+                    yield chunk;
                     break;
                 };
 
                 let remaining = chunk.split_off(esc_at_index + 1);
                 chunk.truncate(esc_at_index);
-                yield Ok(chunk);
-                yield Ok(escape_seq.into());
+                yield chunk;
+                yield escape_seq.into();
                 chunk = remaining;
             }
         }
@@ -45,7 +45,7 @@ mod test {
     use bytes::Bytes;
 
     fn as_stream(s: &'static str) -> impl MiasmaStream {
-        stream! { yield Ok(Bytes::from_static(s.as_bytes())) }
+        try_stream! { yield Bytes::from_static(s.as_bytes()) }
     }
 
     async fn drain_stream(stream: impl MiasmaStream) -> String {

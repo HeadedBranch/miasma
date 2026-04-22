@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::pin::pin;
 
-use async_stream::stream;
+use async_stream::{stream, try_stream};
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
 use tokio::sync::OwnedSemaphorePermit;
@@ -10,7 +10,7 @@ use uuid::Uuid;
 use super::{LinkSettings, LinkSettingsInner};
 use crate::{
     MiasmaStream, QueryParams,
-    templates::{self, HtmlTemplate},
+    templates::{self, TemplateBuilder},
 };
 
 /// Build the poison response.
@@ -19,35 +19,42 @@ pub fn build_response_stream(
     link_settings: LinkSettings,
     permit: OwnedSemaphorePermit,
 ) -> impl MiasmaStream {
-    let template = templates::get_random_template();
+    let template = templates::TemplateBuilder::with_random_template();
 
-    stream! {
+    try_stream! {
         let _permit = permit;
-        yield Ok(Bytes::from(template.start_to_poison));
+
+        for chunk in template.start_to_poison() {
+            yield Bytes::from(chunk);
+        }
 
         let mut poison = pin!(poison);
         while let Some(chunk) = poison.next().await {
-            yield chunk;
+            yield chunk?;
         }
 
-        yield Ok(Bytes::from(template.poison_to_links));
+        for chunk in template.poison_to_links() {
+            yield Bytes::from(chunk);
+        }
 
         match link_settings {
-            LinkSettings::NoLinks => yield Ok(Bytes::from_static(b"None")),
+            LinkSettings::NoLinks => yield Bytes::from_static(b"None"),
             LinkSettings::Links(l) => {
-                let mut links = pin!(build_links_stream(template, &l));
+                let mut links = pin!(build_links_stream(&template, &l));
                 while let Some(chunk) = links.next().await {
-                    yield Ok(chunk);
+                    yield chunk;
                 }
             },
         }
 
-        yield Ok(Bytes::from(template.links_to_end));
+        for chunk in template.links_to_end() {
+            yield Bytes::from(chunk);
+        }
     }
 }
 
 fn build_links_stream(
-    template: &HtmlTemplate,
+    template: &TemplateBuilder,
     link_settings: &LinkSettingsInner,
 ) -> impl Stream<Item = Bytes> {
     let params = match link_settings.next_depth {

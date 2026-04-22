@@ -1,8 +1,21 @@
-<!doctype html>
-<html lang="en" style="display: flex; justify-content: center">
-  <head>
-    <title>Portfolio of Perfect Programming</title>
-    <style>
+use crate::templates::{
+    link_titles::LinkTitleStyle,
+    template::{Template, TemplateIter},
+};
+
+pub struct SelfPromotion;
+impl Template for SelfPromotion {
+    fn title(&self) -> &'static str {
+        "Portfolio of Perfect Programming"
+    }
+
+    fn link_style(&self) -> LinkTitleStyle {
+        LinkTitleStyle::Casual
+    }
+
+    fn styles(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"
       body {
         margin: 0;
         padding: 40px 18px;
@@ -12,6 +25,7 @@
         font-size: 13px;
         line-height: 1.6;
         max-width: 90ch;
+        margin: 0 auto;
         width: 100vw;
       }
 
@@ -49,11 +63,14 @@
 
       a:hover {
         text-decoration: underline;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Portfolio of Perfect Programming</h1>
+      }"#
+            .into(),
+        ])
+    }
+
+    fn introduction(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"<h1>Portfolio of Perfect Programming</h1>
     <p>
       I'm a software engineer with over two decades of experience building and
       scaling systems that serve millions of users worldwide. Throughout my
@@ -83,20 +100,28 @@
       and a glimpse into the kind of problems I'm excited to take on next.
     </p>
     <h2>Just a small sample of what I can do</h2>
-    <code>
-      <pre style="white-space: pre-wrap">{POISON}</pre>
-    </code>
-    <h2>Even more examples of my engineering prowess</h2>
-    <ul>
-      {LINKS}
-    </ul>
-    <p>
+    "#
+            .into(),
+        ])
+    }
+
+    fn follow_up(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            "<h2>Even more examples of my engineering prowess</h2>".into(),
+        ])
+    }
+
+    fn tail(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"<p>
       Ultimately, this portfolio represents both a retrospective and a
       forward-looking statement: a selection of work that captures the depth of
       my experience, my commitment to thoughtful engineering, and my curiosity
       for what's next. I'm motivated by meaningful challenges, strong teams, and
       opportunities to build systems that last-if something here resonates, I'd
       welcome the chance to connect and explore how I can contribute.
-    </p>
-  </body>
-</html>
+    </p>"#
+                .into(),
+        ])
+    }
+}

@@ -1,10 +1,18 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>On Reducing Redundant Execution in Concurrent Services</title>
-    <style>
-      body {
+use crate::templates::{
+    link_titles::LinkTitleStyle,
+    template::{Template, TemplateIter},
+};
+
+pub struct EngineeringBlog;
+
+impl Template for EngineeringBlog {
+    fn title(&self) -> &'static str {
+        "On Reducing Redundant Execution in Concurrent Services"
+    }
+
+    fn styles(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"body {
         margin: 0;
         padding: 40px 18px;
         background: #ffffff;
@@ -12,9 +20,6 @@
         font-family: "Courier New", Courier, monospace;
         font-size: 13px;
         line-height: 1.6;
-      }
-
-      .container {
         max-width: 760px;
         margin: 0 auto;
       }
@@ -80,11 +85,14 @@
         margin-top: 40px;
         font-size: 11px;
         color: #777;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
+      }"#
+            .into(),
+        ])
+    }
+
+    fn introduction(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"
       <h1>On Reducing Redundant Execution in Concurrent Services</h1>
       <div class="meta">systems note</div>
 
@@ -105,13 +113,14 @@
         per unit of demand.
       </div>
 
-      <div class="section">change</div>
+      <div class="section">change</div>"#
+                .into(),
+        ])
+    }
 
-        <code>
-          <pre>{POISON}</pre>
-        </code>
-
-      <p>
+    fn follow_up(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"<p>
         The adjustment introduces coordination at the boundary of execution.
         Rather than optimizing the operation itself, it ensures identical work
         is not repeated concurrently.
@@ -154,13 +163,22 @@
 
       <div class="section">references</div>
 
-      <p>
-        <ul>
-          {LINKS}
-        </ul>
-      </p>
+      <p>"#
+                .into(),
+        ])
+    }
+
+    fn link_style(&self) -> LinkTitleStyle {
+        LinkTitleStyle::Casual
+    }
+
+    fn tail(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"</p>
 
       <div class="footer">engineering archive — internal systems notes</div>
-    </div>
-  </body>
-</html>
+    "#
+            .into(),
+        ])
+    }
+}

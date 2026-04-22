@@ -3,7 +3,7 @@ mod config;
 mod error;
 mod poison;
 mod router;
-mod templates;
+pub mod templates;
 mod utils;
 
 use router::QueryParams;

@@ -1,13 +1,39 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>
-      A Unified Framework for Globally Consistent Tensor Quantization
-    </title>
-  </head>
+use crate::templates::{
+    link_titles::LinkTitleStyle,
+    template::{Template, TemplateIter},
+};
 
-  <body bgcolor="#ffffff" text="#000000" link="#0000ff" vlink="#551a8b">
+pub struct NovelResearch;
+
+impl Template for NovelResearch {
+    fn title(&self) -> &'static str {
+        "A Unified Framework for Globally Consistent Tensor Quantization"
+    }
+
+    fn link_style(&self) -> LinkTitleStyle {
+        LinkTitleStyle::Academic
+    }
+
+    fn styles(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"
+        body {
+          background-color: #ffffff;
+          color: #000000
+        }
+        a {
+        color: #0000ff
+        }
+        a:visited {
+            color: #551a8b
+        }"#
+            .into(),
+        ])
+    }
+
+    fn introduction(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"
     <table width="760" align="center">
       <tr>
         <td>
@@ -47,12 +73,14 @@
           </p>
 
           <h3>Core Implementation</h3>
+        "#
+            .into(),
+        ])
+    }
 
-          <code>
-            <pre style="white-space: pre-wrap">{POISON}</pre>
-          </code>
-
-          <p>
+    fn follow_up(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"<p>
             The implementation introduces a pre-quantization projection that
             rebalances channel-wise variance, followed by a shared quantization
             step. The projection is invertible, ensuring that reconstruction
@@ -62,11 +90,14 @@
           <hr />
 
           <h2>Related Work</h2>
+          "#
+            .into(),
+        ])
+    }
 
-          <ul>
-            {LINKS}
-          </ul>
-
+    fn tail(&self) -> TemplateIter {
+        TemplateIter::new(vec![
+            r#"
           <hr />
 
           <h2>Notes</h2>
@@ -86,6 +117,8 @@
           </p>
         </td>
       </tr>
-    </table>
-  </body>
-</html>
+    </table>"#
+                .into(),
+        ])
+    }
+}

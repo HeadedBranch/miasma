@@ -1,133 +1,168 @@
+// warning to future collaborators
+// the code in this module is very memory efficient and achieves the project's goals
+// however, it is very ugly and a bit hard to follow
+// i am sorry, good luck
+
+mod ai_native;
+mod cto_letter;
+mod deep_dive;
+mod engineering_blog;
 mod link_titles;
+mod novel_research;
+mod self_promotion;
+mod streaming_marketing;
+pub mod template;
+
+use std::iter::once;
 
 use rand::seq::IndexedRandom;
 
-use link_titles::LinkTitleStyle;
+use crate::templates::{
+    ai_native::AINative, cto_letter::CtoLetter, deep_dive::DeepDive,
+    engineering_blog::EngineeringBlog, novel_research::NovelResearch,
+    self_promotion::SelfPromotion, streaming_marketing::StreamingMarketing, template::Template,
+};
 
-const TEMPLATES: &[HtmlTemplate] = &[
-    HtmlTemplate::new(include_str!("self_promotion.html"), LinkTitleStyle::Casual),
-    HtmlTemplate::new(include_str!("cto_letter.html"), LinkTitleStyle::Enterprise),
-    HtmlTemplate::new(include_str!("deep_dive.html"), LinkTitleStyle::Casual),
-    HtmlTemplate::new(include_str!("ai_native.html"), LinkTitleStyle::Enterprise),
-    HtmlTemplate::new(
-        include_str!("novel_research.html"),
-        LinkTitleStyle::Academic,
-    ),
-    HtmlTemplate::new(
-        include_str!("streaming_marketing.html"),
-        LinkTitleStyle::Enterprise,
-    ),
-    HtmlTemplate::new(
-        include_str!("engineering_blog.html"),
-        LinkTitleStyle::Casual,
-    ),
+const TEMPLATES: &[&dyn Template] = &[
+    &EngineeringBlog,
+    &SelfPromotion,
+    &NovelResearch,
+    &AINative,
+    &CtoLetter,
+    &DeepDive,
+    &StreamingMarketing,
 ];
 
-pub fn get_random_template() -> &'static HtmlTemplate {
-    TEMPLATES
-        .choose(&mut rand::rng())
-        .expect("templates slice is not empty")
+pub struct TemplateBuilder<'a> {
+    template: &'a dyn Template,
 }
 
-pub struct HtmlTemplate {
-    pub start_to_poison: &'static str,
-    pub poison_to_links: &'static str,
-    pub links_to_end: &'static str,
-    link_title_style: LinkTitleStyle,
-}
+impl<'a> TemplateBuilder<'a> {
+    pub fn with_random_template() -> Self {
+        Self {
+            template: *TEMPLATES
+                .choose(&mut rand::rng())
+                .expect("templates slice is not empty"),
+        }
+    }
 
-impl HtmlTemplate {
     /// Get a random link title based on the template's link styling.
     pub fn get_link_title(&self) -> &'static str {
-        self.link_title_style
+        self.template
+            .link_style()
             .options()
             .choose(&mut rand::rng())
             .expect("link titles slice should not be empty")
     }
-}
 
-impl HtmlTemplate {
-    /// This function is a bit insane but it works and let's us write the template in an html file.
-    /// Plus, it does all the stupid stuff at compile time! :D
-    const fn new(template: &'static str, link_title_style: LinkTitleStyle) -> HtmlTemplate {
-        let t_bytes = template.as_bytes();
-        let poison_marker = "{POISON}".as_bytes();
-        let links_marker = "{LINKS}".as_bytes();
-
-        let poison_ind = get_split_ind(t_bytes, poison_marker);
-        let links_ind = get_split_ind(t_bytes, links_marker);
-
-        let (head, rest) = template.split_at(poison_ind);
-        let (_, rest) = rest.split_at(poison_marker.len());
-        let (mid, rest) = rest.split_at(links_ind - (poison_ind + poison_marker.len()));
-        let (_, end) = rest.split_at(links_marker.len());
-
-        HtmlTemplate {
-            start_to_poison: head,
-            poison_to_links: mid,
-            links_to_end: end,
-            link_title_style,
-        }
+    pub fn start_to_poison(&self) -> impl Iterator<Item = &'static str> {
+        std::iter::empty()
+            .chain(once(stringify! {
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>
+            }))
+            .chain(once(self.template.title()))
+            .chain(once(stringify! {
+                    </title>
+                    <style>
+            }))
+            .chain(self.template.styles())
+            .chain(once(stringify! {
+                    </style>
+                </head>
+                <body>
+            }))
+            .chain(self.template.introduction())
+            .chain(once(stringify! {
+                    <code>
+                        <pre style="white-space: pre-wrap">
+            }))
     }
-}
 
-/// Do a sliding window type thing to find where the marker occurs in the template.
-const fn get_split_ind(template: &[u8], marker: &[u8]) -> usize {
-    let mut ind = 0;
-    while ind + marker.len() <= template.len() {
-        let mut cur = 0;
-        while cur < marker.len() {
-            if template[ind + cur] != marker[cur] {
-                break;
-            }
-            cur += 1;
-        }
-        if cur == marker.len() {
-            return ind;
-        }
-        ind += 1;
+    pub fn poison_to_links(&self) -> impl Iterator<Item = &'static str> {
+        std::iter::empty()
+            .chain(once(stringify! {
+                        </pre>
+                    </code>
+            }))
+            .chain(self.template.follow_up())
+            .chain(once(stringify! {
+                    <ul>
+            }))
     }
-    panic!("failed to find marker in template");
+    pub fn links_to_end(&self) -> impl Iterator<Item = &'static str> {
+        std::iter::empty()
+            .chain(once(stringify! {
+                    </ul>
+            }))
+            .chain(self.template.tail())
+            .chain(once(stringify! {
+                </body>
+                </html>
+            }))
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::templates::{link_titles::LinkTitleStyle, template::TemplateIter};
+
     use super::*;
 
     #[test]
-    fn new_extracts_parts() {
-        let template = "start{POISON}middle{LINKS}end";
-        let HtmlTemplate {
-            start_to_poison,
-            poison_to_links,
-            links_to_end,
-            ..
-        } = HtmlTemplate::new(template, LinkTitleStyle::Casual);
-        assert_eq!(start_to_poison, "start");
-        assert_eq!(poison_to_links, "middle");
-        assert_eq!(links_to_end, "end");
+    fn templating_works() {
+        struct MockTemplate;
+        impl Template for MockTemplate {
+            fn title(&self) -> &'static str {
+                "title"
+            }
+            fn link_style(&self) -> LinkTitleStyle {
+                LinkTitleStyle::Casual
+            }
+            fn styles(&self) -> TemplateIter {
+                TemplateIter::new(vec!["styles".into()])
+            }
+            fn introduction(&self) -> TemplateIter {
+                TemplateIter::new(vec!["intro".into()])
+            }
+            fn follow_up(&self) -> TemplateIter {
+                TemplateIter::new(vec!["follow-up".into()])
+            }
+            fn tail(&self) -> TemplateIter {
+                TemplateIter::new(vec!["tail".into()])
+            }
+        }
+
+        let expected = r#"
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>title</title>
+    <style>styles</style>
+  </head>
+  <body>
+  intro
+  <code><pre>{POISON}</pre>
+    </code>
+    follow-up
+    <ul>
+      {LINKS}
+    </ul>
+    tail
+  </body>
+</html>"#;
     }
 
     #[test]
-    #[should_panic]
-    fn new_fails_if_markers_out_of_order() {
-        HtmlTemplate::new(
-            "can't have {LINKS} before {POISON}!",
-            LinkTitleStyle::Casual,
-        );
-    }
-
-    #[test]
-    fn get_split_ind_returns_start_of_marker() {
-        let template = "foo{HERE}bar";
-        let expected = 3;
-        let ind = get_split_ind(template.as_bytes(), "{HERE}".as_bytes());
-        assert_eq!(ind, expected);
-    }
-
-    #[test]
-    #[should_panic]
-    fn get_split_ind_panics_on_missing_marker() {
-        get_split_ind("this doesn't contain".as_bytes(), "THE MARKER".as_bytes());
+    fn all_templates_produce_valid_documents() {
+        for template in TEMPLATES {
+            // TODO: validate with scraper library
+        }
     }
 }
