@@ -4,7 +4,7 @@
 [![crates.io](https://img.shields.io/crates/v/miasma?logo=rust)](https://crates.io/crates/miasma)
 [![downloads](https://img.shields.io/crates/dr/miasma?logo=rust)](https://crates.io/crates/miasma)
 [![Crate Dependencies](https://img.shields.io/deps-rs/miasma/latest?logo=rust)](https://crates.io/crates/miasma/0.1.15/dependencies)
-[![Checks](https://github.com/austin-weeks/miasma/actions/workflows/Checks.yaml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/Checks.yaml)
+[![Release](https://github.com/austin-weeks/miasma/actions/workflows/Release.yaml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/Release.yaml)
 [![GitHub commits since latest release](https://img.shields.io/github/commits-since/austin-weeks/miasma/latest?logo=github)](#)
 
 <picture>
@@ -144,10 +144,6 @@ _Miasma_ can be configured via its CLI options:
 | `force-gzip`        | `false`                        | Always gzip responses regardless of the client's _Accept-Encoding_ header. **Forcing compression can help reduce egress costs.**                                                                                                                                        |
 | `unsafe-allow-html` | `false`                        | Don't escape HTML characters in the poison source's responses. Escaping is enabled by default to prevent unintended client-side JavaScript execution. **Use this option with care.**                                                                                    |
 | `poison-source`     | `https://rnsaffn.com/poison2/` | Proxy source for poisoned training data.                                                                                                                                                                                                                                |
-
-## Development
-
-Contributions are welcome! Please open an [issue](https://github.com/austin-weeks/miasma/issues) for bugs reports or feature requests. Primarily AI-generated contributions will be automatically rejected.
 
 ## Disclaimer
 
