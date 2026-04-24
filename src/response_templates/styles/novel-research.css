@@ -1,0 +1,10 @@
+body {
+  background-color: #ffffff;
+  color: #000000;
+}
+a {
+  color: #0000ff;
+}
+a:visited {
+  color: #551a8b;
+}

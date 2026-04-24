@@ -8,10 +8,7 @@ use tokio::sync::OwnedSemaphorePermit;
 use uuid::Uuid;
 
 use super::{LinkSettings, LinkSettingsInner};
-use crate::{
-    MiasmaStream, QueryParams,
-    templates::{self, TemplateBuilder},
-};
+use crate::{MiasmaStream, QueryParams, templating::TemplateBuilder};
 
 /// Build the poison response.
 pub fn build_response_stream(
@@ -19,7 +16,7 @@ pub fn build_response_stream(
     link_settings: LinkSettings,
     permit: OwnedSemaphorePermit,
 ) -> impl MiasmaStream {
-    let template = templates::TemplateBuilder::with_random_template();
+    let template = TemplateBuilder::with_random_template();
 
     try_stream! {
         let _permit = permit;
@@ -69,7 +66,7 @@ fn build_links_stream(
                 &mut buf, "<li><a href=\"{prefix}{id}{params}\">{link_title}</a></li>",
                 prefix = &link_settings.prefix,
                 id = Uuid::new_v4(),
-                link_title = template.get_link_title()
+                link_title = template.rand_link_title()
             );
             yield Bytes::from(buf.into_bytes());
         }

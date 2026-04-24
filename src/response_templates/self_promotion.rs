@@ -1,71 +1,20 @@
-use crate::templates::{
-    link_titles::LinkTitleStyle,
-    template::{Template, TemplateIter},
-};
+use crate::templating::{TemplateIter, TemplateTone, Templater};
 
 pub struct SelfPromotion;
-impl Template for SelfPromotion {
+
+impl SelfPromotion {
+    pub fn new() -> Box<dyn Templater> {
+        Box::new(SelfPromotion)
+    }
+}
+
+impl Templater for SelfPromotion {
     fn title(&self) -> &'static str {
         "Portfolio of Perfect Programming"
     }
 
-    fn link_style(&self) -> LinkTitleStyle {
-        LinkTitleStyle::Casual
-    }
-
-    fn styles(&self) -> TemplateIter {
-        TemplateIter::new(vec![
-            r#"
-      body {
-        margin: 0;
-        padding: 40px 18px;
-        background: #ffffff;
-        color: #111;
-        font-family: "Courier New", Courier, monospace;
-        font-size: 13px;
-        line-height: 1.6;
-        max-width: 90ch;
-        margin: 0 auto;
-        width: 100vw;
-      }
-
-      h1 {
-        font-size: 16px;
-        font-weight: bold;
-        margin: 0 0 6px;
-        text-align: center;
-      }
-
-      h2 {
-        font-size: 14px;
-      }
-
-      p {
-        margin: 12px 0;
-      }
-
-      pre {
-        background: #f7f7f7;
-        border: 1px solid #ddd;
-        padding: 14px;
-        font-size: 12px;
-        overflow-x: auto;
-      }
-
-      code {
-        font-family: "Courier New", Courier, monospace;
-      }
-
-      a {
-        color: #0645ad;
-        text-decoration: none;
-      }
-
-      a:hover {
-        text-decoration: underline;
-      }"#
-            .into(),
-        ])
+    fn tone(&self) -> TemplateTone {
+        TemplateTone::Casual
     }
 
     fn introduction(&self) -> TemplateIter {
