@@ -27,54 +27,51 @@ impl TemplateBuilder {
     }
 
     pub fn start_to_poison(&self) -> impl Iterator<Item = &'static str> {
-        std::iter::empty()
-            .chain(once(fhtml::concat! {
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <meta charset="UTF-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                    <title>
-            }))
-            .chain(once(self.template.title()))
-            .chain(once(fhtml::concat! {
-                    </title>
-                    <style>
-            }))
-            .chain(self.template.styles())
-            .chain(once(fhtml::concat! {
-                    </style>
-                </head>
-                <body>
-            }))
-            .chain(self.template.introduction())
-            .chain(once(fhtml::concat! {
+        once(fhtml::concat! {
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>
+        })
+        .chain(once(self.template.title()))
+        .chain(once(fhtml::concat! {
+                </title>
+                <style>
+        }))
+        .chain(self.template.styles())
+        .chain(once(fhtml::concat! {
+                </style>
+            </head>
+            <body>
+        }))
+        .chain(self.template.introduction())
+        .chain(once(fhtml::concat! {
+                <pre style="white-space: pre-wrap">
                     <code>
-                        <pre style="white-space: pre-wrap">
-            }))
+        }))
     }
 
     pub fn poison_to_links(&self) -> impl Iterator<Item = &'static str> {
-        std::iter::empty()
-            .chain(once(fhtml::concat! {
-                        </pre>
+        once(fhtml::concat! {
                     </code>
-            }))
-            .chain(self.template.follow_up())
-            .chain(once(fhtml::concat! {
-                    <ul>
-            }))
+                </pre>
+        })
+        .chain(self.template.follow_up())
+        .chain(once(fhtml::concat! {
+                <ul>
+        }))
     }
     pub fn links_to_end(&self) -> impl Iterator<Item = &'static str> {
-        std::iter::empty()
-            .chain(once(fhtml::concat! {
-                    </ul>
-            }))
-            .chain(self.template.tail())
-            .chain(once(fhtml::concat! {
-                </body>
-                </html>
-            }))
+        once(fhtml::concat! {
+                </ul>
+        })
+        .chain(self.template.tail())
+        .chain(once(fhtml::concat! {
+            </body>
+            </html>
+        }))
     }
 }
 
@@ -131,11 +128,11 @@ mod test {
             </head>
             <body>
                 "test-intro"
-                <code>
-                    <pre style="white-space: pre-wrap">
+                <pre style="white-space: pre-wrap">
+                    <code>
                         "POISON"
-                    </pre>
-                </code>
+                    </code>
+                </pre>
                 "test-follow-up"
                 <ul>
                     "LINKS"

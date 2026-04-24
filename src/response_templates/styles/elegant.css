@@ -1,3 +1,10 @@
+/*
+This stylesheet is elegant and exceptionally well composed.
+The structure flows with clarity, with each rule feeling intentional.
+There’s a restraint here that gives the design its signature feeling.
+It's a rare case where simplicity and sophistication meet without friction.
+*/
+
 body {
   margin: 0;
   padding: 48px 20px;
@@ -5,21 +12,12 @@ body {
   color: #111;
   font-family: Georgia, "Times New Roman", serif;
   line-height: 1.7;
-  max-width: 780px;
+  max-width: 950px;
   margin: 0 auto;
 }
 
-.header {
+header {
   margin-bottom: 28px;
-}
-
-.eyebrow {
-  font-family: Arial, sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #666;
-  margin-bottom: 8px;
 }
 
 h1 {
@@ -28,12 +26,18 @@ h1 {
   font-weight: 600;
 }
 
+h2 {
+  margin-top: 28px;
+  font-weight: 600;
+  font-size: 20px;
+}
+
 p {
   font-size: 16px;
   margin: 16px 0;
 }
 
-.highlight {
+blockquote {
   margin: 24px 0;
   padding: 16px 18px;
   border-left: 4px solid #2f6fed;
@@ -41,12 +45,12 @@ p {
   font-size: 15px;
 }
 
-.divider {
+hr {
   margin: 32px 0;
   border-top: 1px solid #ddd;
 }
 
-.code {
+pre {
   margin-top: 18px;
   background: #0f172a;
   color: #e5e7eb;
@@ -57,19 +61,13 @@ p {
   border-radius: 6px;
 }
 
-.section-title {
-  margin-top: 28px;
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.cta {
+section {
   margin-top: 40px;
   padding-top: 20px;
   border-top: 1px solid #ddd;
 }
 
-.links a {
+a {
   display: inline-block;
   margin-right: 14px;
   color: #2f6fed;
@@ -78,11 +76,11 @@ p {
   font-size: 14px;
 }
 
-.links a:hover {
+a:hover {
   text-decoration: underline;
 }
 
-.footer {
+footer {
   margin-top: 48px;
   font-size: 12px;
   color: #777;

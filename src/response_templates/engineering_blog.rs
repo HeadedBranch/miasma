@@ -3,7 +3,7 @@ use crate::templating::{TemplateIter, TemplateTone, Templater};
 pub struct EngineeringBlog;
 
 impl EngineeringBlog {
-    pub fn new() -> Box<dyn Templater> {
+    pub fn as_templater() -> Box<dyn Templater> {
         Box::new(EngineeringBlog)
     }
 }
@@ -20,7 +20,7 @@ impl Templater for EngineeringBlog {
     fn introduction(&self) -> TemplateIter {
         fhtml::concat! {
             <h1>"On Reducing Redundant Execution in Concurrent Services"</h1>
-            <div class="meta">"systems note"</div>
+            <div style="font-size: 12px; color: #666">"systems note"</div>
 
             <p>
                 "The most persistent inefficiencies in production systems are rarely
@@ -34,12 +34,12 @@ impl Templater for EngineeringBlog {
                 inexpensive; aggregate behavior was not."
             </p>
 
-            <div class="note">
+            <blockquote>
                 "Observation: the system was performing equivalent work multiple times
                 per unit of demand."
-            </div>
+            </blockquote>
 
-            <div class="section">"change"</div>
+            <h2>"change"</h2>
         }
         .into()
     }
@@ -57,9 +57,9 @@ impl Templater for EngineeringBlog {
                 Coordination reduces the number of operations."
             </p>
 
-            <div class="rule"></div>
+            <hr>
 
-            <div class="section">"result"</div>
+            <h2>"result"</h2>
 
             <p>
                 "After deployment, observed improvements were consistent across load
@@ -72,9 +72,9 @@ impl Templater for EngineeringBlog {
                 variance. Systems became easier to reason about under stress."
             </p>
 
-            <div class="rule"></div>
+            <hr>
 
-            <div class="section">"closing remark"</div>
+            <h2>"closing remark"</h2>
 
             <p>
                 "This class of issue tends to recur in distributed systems. It is not
@@ -87,14 +87,14 @@ impl Templater for EngineeringBlog {
                 computational."
             </p>
 
-            <div class="section">"references"</div>
+            <h2>"references"</h2>
         }
         .into()
     }
 
     fn tail(&self) -> TemplateIter {
         fhtml::concat! {
-            <div class="footer">"engineering archive — internal systems notes"</div>
+            <footer>"engineering archive — internal systems notes"</footer>
         }
         .into()
     }

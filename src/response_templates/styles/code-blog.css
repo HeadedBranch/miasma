@@ -1,3 +1,9 @@
+/*
+This stylesheet gets the job done with a kind of unapologetic pragmatism.
+It’s a bit scrappy, a bit improvised—but that’s part of the charm.
+You can tell it evolved alongside the code it supports, shaped by necessity more than theory.
+*/
+
 body {
   margin: 0;
   padding: 40px 18px;
@@ -11,28 +17,22 @@ body {
 }
 
 h1 {
-  font-size: 16px;
+  font-size: 28px;
   font-weight: bold;
   margin: 0 0 6px;
-}
-
-.meta {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 24px;
 }
 
 p {
   margin: 12px 0;
 }
 
-.rule {
+hr {
   margin: 24px 0;
   border-top: 1px solid #ccc;
 }
 
-.section {
-  margin-top: 20px;
+h2 {
+  margin-top: 16px;
   margin-bottom: 10px;
   font-weight: bold;
 }
@@ -51,7 +51,7 @@ code {
   overflow-x: auto;
 }
 
-.note {
+blockquote {
   margin: 14px 0;
   padding-left: 10px;
   border-left: 2px solid #bbb;
@@ -67,7 +67,7 @@ a:hover {
   text-decoration: underline;
 }
 
-.footer {
+footer {
   margin-top: 40px;
   font-size: 11px;
   color: #777;

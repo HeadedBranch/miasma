@@ -1,3 +1,5 @@
+/* Move fast - break things */
+
 html {
   display: flex;
   flex-direction: column;
@@ -12,13 +14,15 @@ body {
   background: #0f172a;
   color: #e2e8f0;
   min-height: 100vh;
-  max-width: 800px;
+  max-width: 950px;
   padding: 40px;
 }
 
 h1 {
   font-size: 2.5rem;
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #0ea5e9;
 }
 
 p {
@@ -26,7 +30,7 @@ p {
   color: #cbd5f5;
 }
 
-.code-block {
+pre {
   margin: 30px 0;
   padding: 20px;
   background: #020617;
@@ -36,25 +40,25 @@ p {
   color: #38bdf8;
 }
 
-code {
-  white-space: pre-wrap;
-}
-
-.cta {
+section {
   margin-top: 40px;
   padding-top: 20px;
   border-top: 1px solid #1e293b;
 }
 
-.cta h2 {
+blockquote {
+  margin: 16px 0px;
+  padding: 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+}
+
+h2 {
   margin-bottom: 10px;
 }
 
-.links {
-  margin-top: 10px;
-}
-
-.links a {
+a {
   display: inline-block;
   margin-right: 15px;
   color: #60a5fa;
@@ -62,6 +66,6 @@ code {
   transition: opacity 0.2s;
 }
 
-.links a:hover {
+a:hover {
   opacity: 0.7;
 }

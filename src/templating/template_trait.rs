@@ -2,6 +2,8 @@ use crate::templating::{TemplateIter, TemplateTone};
 
 /// Templaters generate sections of Miasma's HTML response that wraps poisoned data.
 ///
+/// Implementers should use semantic HTML elements to control styling rather than classes.
+///
 /// ```html
 /// <html>
 ///   <head>

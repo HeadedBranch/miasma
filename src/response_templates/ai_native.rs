@@ -5,7 +5,7 @@ use crate::templating::{
 pub struct AINative;
 
 impl AINative {
-    pub fn new() -> Box<dyn Templater> {
+    pub fn as_templater() -> Box<dyn Templater> {
         Box::new(AINative)
     }
 }
@@ -22,8 +22,7 @@ impl Templater for AINative {
     fn introduction(&self) -> TemplateIter {
         fhtml::concat! {
           <h1>
-            "Composable Intelligence"<br />
-            "Executed in Real Time"
+            "Composable Intelligence Executed in Real Time"
           </h1>
 
           <p>
@@ -49,17 +48,13 @@ impl Templater for AINative {
             The following snippet captures a simplified version of that
             orchestration pipeline."
           </p>
-
-          <div class="code-block">
         }
         .into()
     }
 
     fn follow_up(&self) -> TemplateIter {
         fhtml::concat! {
-          </div>
-
-          <div class="cta">
+          <section>
             <h2>"Explore More"</h2>
             <p>
                 "This is one component of a broader system designed to make AI
@@ -67,15 +62,13 @@ impl Templater for AINative {
                 additional patterns and primitives that enable production-grade AI
                 infrastructure."
             </p>
-          <div class="links">
         }
         .into()
     }
 
     fn tail(&self) -> TemplateIter {
         fhtml::concat! {
-                </div>
-            </div>
+          </section>
         }
         .into()
     }

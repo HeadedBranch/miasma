@@ -1,6 +1,10 @@
 body {
   background-color: #ffffff;
   color: #000000;
+  margin-right: auto;
+  margin-left: auto;
+  padding-bottom: 12px;
+  max-width: 850px;
 }
 a {
   color: #0000ff;

@@ -6,37 +6,27 @@ mod novel_research;
 mod self_promotion;
 mod streaming_marketing;
 
-pub use ai_native::AINative;
-pub use cto_letter::CtoLetter;
-pub use deep_dive::DeepDive;
-pub use engineering_blog::EngineeringBlog;
-pub use novel_research::NovelResearch;
-pub use self_promotion::SelfPromotion;
-pub use streaming_marketing::StreamingMarketing;
-
 use crate::templating::Templater;
 
 /// All available response templates.
 pub const RESPONSE_TEMPLATE_CONSTRUCTORS: &[fn() -> Box<dyn Templater>] = &[
-    EngineeringBlog::new,
-    SelfPromotion::new,
-    NovelResearch::new,
-    AINative::new,
-    CtoLetter::new,
-    DeepDive::new,
-    StreamingMarketing::new,
+    engineering_blog::EngineeringBlog::as_templater,
+    self_promotion::SelfPromotion::as_templater,
+    novel_research::NovelResearch::as_templater,
+    ai_native::AINative::as_templater,
+    cto_letter::CtoLetter::as_templater,
+    deep_dive::DeepDive::as_templater,
+    streaming_marketing::StreamingMarketing::as_templater,
 ];
 
 pub const CASUAL_STYLES: &[&str] = &[
-    include_str!("styles/self-promotion.css"),
-    include_str!("styles/deep-dive.css"),
-    include_str!("styles/engineering-blog.css"),
+    include_str!("styles/simple.css"),
+    include_str!("styles/code-blog.css"),
 ];
-pub const ACADEMIC_STYLES: &[&str] = &[include_str!("styles/novel-research.css")];
+pub const ACADEMIC_STYLES: &[&str] = &[include_str!("styles/professor.css")];
 pub const ENTERPRISE_STYLES: &[&str] = &[
-    include_str!("styles/ai-native.css"),
-    include_str!("styles/cto-letter.css"),
-    include_str!("styles/streaming-marketing.css"),
+    include_str!("styles/vibe-slop.css"),
+    include_str!("styles/elegant.css"),
 ];
 
 #[cfg(test)]
@@ -56,7 +46,10 @@ mod test {
                 .collect::<String>();
 
             let errors = scraper::Html::parse_document(&document).errors;
-            assert!(errors.is_empty(), "template at index {ind}: {errors:?}");
+            assert!(
+                errors.is_empty(),
+                "template at index {ind}: {errors:?} - {document:?}"
+            );
         }
     }
 
