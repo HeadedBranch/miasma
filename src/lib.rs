@@ -2,8 +2,9 @@ mod app;
 mod config;
 mod error;
 mod poison;
+mod response_templates;
 mod router;
-mod templates;
+pub mod templating;
 mod utils;
 
 use router::QueryParams;

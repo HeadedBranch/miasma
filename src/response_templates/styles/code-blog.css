@@ -1,0 +1,74 @@
+/*
+This stylesheet gets the job done with a kind of unapologetic pragmatism.
+It’s a bit scrappy, a bit improvised—but that’s part of the charm.
+You can tell it evolved alongside the code it supports, shaped by necessity more than theory.
+*/
+
+body {
+  margin: 0;
+  padding: 40px 18px;
+  background: #ffffff;
+  color: #111;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0 0 6px;
+}
+
+p {
+  margin: 12px 0;
+}
+
+hr {
+  margin: 24px 0;
+  border-top: 1px solid #ccc;
+}
+
+h2 {
+  margin-top: 16px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+pre {
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  color: #333;
+  padding: 14px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+code {
+  font-family: "Courier New", Courier, monospace;
+  overflow-x: auto;
+}
+
+blockquote {
+  margin: 14px 0;
+  padding-left: 10px;
+  border-left: 2px solid #bbb;
+  color: #333;
+}
+
+a {
+  color: #0645ad;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+footer {
+  margin-top: 40px;
+  font-size: 11px;
+  color: #777;
+}

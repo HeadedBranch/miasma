@@ -1,6 +1,6 @@
 use std::{pin::pin, sync::LazyLock, time::Duration};
 
-use async_stream::stream;
+use async_stream::try_stream;
 use futures::{StreamExt, TryStreamExt};
 use reqwest::Client;
 use url::Url;
@@ -31,15 +31,15 @@ pub async fn stream_poison(
         .bytes_stream()
         .map_err(MiasmaError::from);
 
-    Ok(stream! {
+    Ok(try_stream! {
         if disable_html_escaping {
             while let Some(chunk) = poison_stream.next().await {
-                yield chunk;
+                yield chunk?;
             }
         } else {
             let mut sanitized = pin!(escape_html_stream(poison_stream));
             while let Some(chunk) = sanitized.next().await {
-                yield chunk;
+                yield chunk?;
             }
         }
     })

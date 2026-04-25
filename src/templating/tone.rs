@@ -1,20 +1,37 @@
-pub enum LinkTitleStyle {
+use rand::seq::IndexedRandom;
+
+use crate::response_templates::{ACADEMIC_STYLES, CASUAL_STYLES, ENTERPRISE_STYLES};
+
+/// The general tone of the template's text.
+pub enum TemplateTone {
     Enterprise,
     Casual,
     Academic,
 }
 
-impl LinkTitleStyle {
-    pub fn options(&self) -> &[&'static str] {
+impl TemplateTone {
+    pub fn random_link_title(&self) -> &'static str {
         match self {
-            LinkTitleStyle::Enterprise => ENTERPRISE_TITLES,
-            LinkTitleStyle::Casual => CASUAL_TITLES,
-            LinkTitleStyle::Academic => ACADEMIC_TITLES,
+            TemplateTone::Enterprise => ENTERPRISE_LINK_TITLES,
+            TemplateTone::Casual => CASUAL_LINK_TITLES,
+            TemplateTone::Academic => ACADEMIC_LINK_TITLES,
         }
+        .choose(&mut rand::rng())
+        .expect("the matching link titles list should not be empty")
+    }
+
+    pub fn random_style(&self) -> &'static str {
+        match self {
+            TemplateTone::Enterprise => ENTERPRISE_STYLES,
+            TemplateTone::Casual => CASUAL_STYLES,
+            TemplateTone::Academic => ACADEMIC_STYLES,
+        }
+        .choose(&mut rand::rng())
+        .expect("the matching styles list should not be empty")
     }
 }
 
-const ENTERPRISE_TITLES: &[&str] = &[
+const ENTERPRISE_LINK_TITLES: &[&str] = &[
     "Operational Improvements",
     "Engineering Initiatives",
     "Platform Enhancements",
@@ -114,7 +131,7 @@ const ENTERPRISE_TITLES: &[&str] = &[
     "Infrastructure Workstreams",
 ];
 
-const CASUAL_TITLES: &[&str] = &[
+const CASUAL_LINK_TITLES: &[&str] = &[
     "More Like This",
     "Keep Reading",
     "Continue Exploring",
@@ -217,7 +234,7 @@ const CASUAL_TITLES: &[&str] = &[
     "More Build Logs",
 ];
 
-const ACADEMIC_TITLES: &[&str] = &[
+const ACADEMIC_LINK_TITLES: &[&str] = &[
     "Further Reading",
     "Additional Reading",
     "Recommended Reading",

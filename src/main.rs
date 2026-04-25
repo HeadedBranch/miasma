@@ -1,17 +1,20 @@
 mod art;
 mod version_check;
 
-use std::sync::LazyLock;
+use std::{env, sync::LazyLock};
 
 use miasma::{Miasma, MiasmaConfig, MiasmaError};
 
 static CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(MiasmaConfig::new);
 
 fn main() -> Result<(), MiasmaError> {
-    // Print banner as long as the user isn't just checking the version
-    if !std::env::args().any(|arg| arg == "-V" || arg == "--version") {
+    // Print the banner if the user is viewing help menu
+    if env::args().any(|arg| arg == "-h" || arg == "--help") {
         art::print_miasma_ascii_art();
     }
+    // Otherwise trigger parsing then print (don't print on failures or version check)
+    _ = CONFIG.port;
+    art::print_miasma_ascii_art();
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
