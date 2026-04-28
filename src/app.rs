@@ -1,6 +1,9 @@
 #[cfg(unix)]
 use std::fs;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+use std::sync::LazyLock;
 use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::UnixListener;
@@ -8,6 +11,10 @@ use tokio::net::UnixListener;
 use crate::MiasmaConfig;
 use crate::MiasmaError;
 use crate::new_miasma_router;
+
+use crate::logger::Logger;
+
+static LOGGER: LazyLock<Logger> = LazyLock::new(Logger::new);
 
 enum Listener {
     Tcp(TcpListener),
@@ -18,6 +25,7 @@ enum Listener {
 pub struct Miasma {
     listener: Listener,
     config: &'static MiasmaConfig,
+    logger: &'static Logger,
 }
 
 impl Miasma {
@@ -51,7 +59,11 @@ impl Miasma {
             );
         }
 
-        Ok(Self { listener, config })
+        Ok(Self {
+            listener,
+            config,
+            logger: &LOGGER,
+        })
     }
 
     /// Start the Miasma server.
@@ -59,7 +71,7 @@ impl Miasma {
     where
         S: Future<Output = ()> + Send + 'static,
     {
-        let router = new_miasma_router(self.config);
+        let router = new_miasma_router(self.config, self.logger);
 
         let server_result = match self.listener {
             Listener::Tcp(tcp) => {
@@ -74,6 +86,8 @@ impl Miasma {
                     .await
             }
         };
+
+        self.logger.flush_to_db();
 
         #[cfg(unix)]
         if let Some(socket) = &self.config.unix_socket
