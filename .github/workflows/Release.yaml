@@ -7,8 +7,13 @@ on:
         description: "Tag to push and release. Should match format <major>.<minor>.<patch> with no prefix or suffix."
         required: true
         type: string
-      skip-publish:
+      skip-cargo-publish:
         description: "Skip publishing to crates.io. You should ONLY do this if publishing previously succeeded but releasing to GitHub failed."
+        required: false
+        default: false
+        type: boolean
+      skip-docker-publish:
+        description: "Skip publishing to Docker Hub. You should ONLY do this if publishing previously succeeded but releasing to GitHub failed."
         required: false
         default: false
         type: boolean
@@ -49,7 +54,7 @@ jobs:
 
       - name: Publish to crates.io
         run: |
-          if [[ "${{ inputs.skip-publish }}" == "true" ]]; then
+          if [[ "${{ inputs.skip-cargo-publish }}" == "true" ]]; then
             echo "Skipping publish to crates.io..."
             exit 0
           fi
@@ -138,6 +143,12 @@ jobs:
     needs:
       - Publish-Crate
     steps:
+      - run: |
+          if [[ "${{ inputs.skip-docker-publish }}" == "true" ]]; then
+            echo "Skipping publish to Docker Hub..."
+            exit 0
+          fi
+
       - name: Authenticate with DockerHub
         uses: docker/login-action@v4
         with:

@@ -4,7 +4,6 @@
 [![crates.io](https://img.shields.io/crates/v/miasma?logo=rust)](https://crates.io/crates/miasma)
 [![downloads](https://img.shields.io/crates/dr/miasma?logo=rust)](https://crates.io/crates/miasma)
 [![Crate Dependencies](https://img.shields.io/deps-rs/miasma/latest?logo=rust)](https://crates.io/crates/miasma/0.1.15/dependencies)
-[![Release](https://github.com/austin-weeks/miasma/actions/workflows/Release.yaml/badge.svg)](https://github.com/austin-weeks/miasma/actions/workflows/Release.yaml)
 [![GitHub commits since latest release](https://img.shields.io/github/commits-since/austin-weeks/miasma/latest?logo=github)](#)
 
 <picture>
@@ -48,11 +47,16 @@ miasma --help
 
 ### Running with Docker
 
-You can run _Miasma_ using the official [docker image](https://hub.docker.com/r/austinweeks/miasma). Pass the same [CLI flags](#configuration) you would use locally as container arguments.
+Run _Miasma_ using the official [docker image](https://hub.docker.com/r/austinweeks/miasma):
 
 ```sh
-docker run --rm -p <DESIRED_PORT>:9999 austinweeks/miasma:latest \
-  <MIASMA_CLI_ARGS> # Example: --link-prefix '/naughty-bots'
+docker run --rm -p 9999:9999 austinweeks/miasma:latest
+```
+
+Pass the same [configuration flags](#configuration) you would use locally:
+
+```sh
+docker run --rm -p 9999:9999 austinweeks/miasma:latest --link-prefix '/naughty-bots' --max-in-flight 30
 ```
 
 Or, run within a docker compose cluster:
@@ -60,10 +64,10 @@ Or, run within a docker compose cluster:
 ```yaml
 services:
   miasma:
-    image: austinweeks/miasma:latest # or a specific SemVer tag
-    command: <MIASMA_CLI_ARGS> # Example: ["--link-prefix", "/naughty-bots"]
+    image: austinweeks/miasma:latest
+    command: ["--link-prefix", "/naughty-bots", "--max-in-flight", "30"]
     ports:
-      - <DESIRED_PORT>:9999
+      - 9999:9999
 ```
 
 ## How to Trap Malicious Scrapers
