@@ -23,7 +23,7 @@ pub struct MiasmaConfig {
     pub port: u16,
 
     /// Host to listen for requests
-    #[arg(long, default_value_t = String::from("localhost") )]
+    #[arg(long, env = "MIASMA_HOST", default_value_t = String::from("localhost") )]
     pub host: String,
 
     /// Bind to the specified Unix socket rather than a TCP address
