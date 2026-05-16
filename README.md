@@ -20,7 +20,11 @@ _Miasma_ is very fast and has a minimal memory footprint - you should not have t
 > [!CAUTION]
 > There is inherent risk in deploying this software. Please fully read [configuration](#configuration) and [disclaimer](#disclaimer) before use.
 
-## Installation
+## Usage
+
+You can run _Miasma_ locally, or with the official [docker image](https://hub.docker.com/r/austinweeks/miasma).
+
+### Running Locally
 
 Install with [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) (recommended):
 
@@ -29,8 +33,6 @@ cargo install miasma
 ```
 
 Or, download a pre-built binary from [releases](https://github.com/austin-weeks/miasma/releases).
-
-## Quick Start
 
 Start _Miasma_ with default configuration:
 
@@ -42,6 +44,26 @@ View all available [configuration options](#configuration):
 
 ```sh
 miasma --help
+```
+
+### Running with Docker
+
+You can run _Miasma_ using the official [docker image](https://hub.docker.com/r/austinweeks/miasma). Pass the same [CLI flags](#configuration) you would use locally as container arguments.
+
+```sh
+docker run --rm -p <DESIRED_PORT>:9999 austinweeks/miasma:latest \
+  <MIASMA_CLI_ARGS> # Example: --link-prefix '/naughty-bots'
+```
+
+Or, run within a docker compose cluster:
+
+```yaml
+services:
+  miasma:
+    image: austinweeks/miasma:latest # or a specific SemVer tag
+    command: <MIASMA_CLI_ARGS> # Example: ["--link-prefix", "/naughty-bots"]
+    ports:
+      - <DESIRED_PORT>:9999
 ```
 
 ## How to Trap Malicious Scrapers
@@ -153,4 +175,4 @@ _Miasma_ is not responsible for any retaliation from operators of affected scrap
 
 ---
 
-_Cover art by [@delphoxlover334](https://www.instagram.com/delphoxlover334/)_
+_Cover art by [@cerberussaturn07](https://www.instagram.com/cerberussaturn07/)_
