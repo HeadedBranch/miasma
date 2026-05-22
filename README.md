@@ -15,7 +15,7 @@ AI companies continually scrape the internet at an enormous scale, swallowing up
 
 _Miasma_ is here to help you fight back! Spin up the server and point any malicious traffic towards it. _Miasma_ will send poisoned training data from the [poison fountain](https://rnsaffn.com/poison3) alongside multiple self-referential links. It's an endless buffet of slop for the slop machines.
 
-_Miasma_ is very fast and has a minimal memory footprint - you should not have to waste compute resources fending off the internet's leeches.
+_Miasma_ is lightning fast and has a minimal memory footprint - you should not have to waste compute resources fending off the internet's leeches.
 
 > [!CAUTION]
 > There is inherent risk in deploying this software. Please fully read [configuration](#configuration) and [disclaimer](#disclaimer) before use.
@@ -32,7 +32,19 @@ Install with [cargo](https://doc.rust-lang.org/cargo/getting-started/installatio
 cargo install miasma
 ```
 
-Or, download a pre-built binary from [releases](https://github.com/austin-weeks/miasma/releases).
+Alternatively, download a pre-built binary from [releases](https://github.com/austin-weeks/miasma/releases).
+
+Community-maintained packages are also available for a variety of package managers:
+
+<a href="https://repology.org/project/miasma/versions">
+    <img
+        src="https://repology.org/badge/vertical-allrepos/miasma.svg?exclude_unsupported=1&minversion=0.2"
+        alt="Packaging status"
+    >
+</a>
+
+<br>
+<br>
 
 Start _Miasma_ with default configuration:
 
@@ -57,7 +69,9 @@ docker run --rm -p 9999:9999 austinweeks/miasma:latest
 Pass the same [configuration flags](#configuration) you would use locally:
 
 ```sh
-docker run --rm -p 9999:9999 austinweeks/miasma:latest --link-prefix '/naughty-bots' --max-in-flight 30
+docker run --rm -p 9999:9999 austinweeks/miasma:latest \
+    --link-prefix '/naughty-bots' \
+    --max-in-flight 30
 ```
 
 Or, run within a docker compose cluster:
@@ -71,7 +85,7 @@ services:
       - 9999:9999
 ```
 
-## How to Trap Malicious Scrapers
+## How to Trap Scrapers
 
 Let's walk through an example of setting up a server to trap scrapers with _Miasma_. We'll pick `/naughty-bots` as our server's path to direct scraper traffic. We'll be using [_Nginx_](https://nginx.org/) as our server's reverse proxy, but the same result can be achieved with many different setups.
 
