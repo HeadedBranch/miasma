@@ -56,7 +56,6 @@ fn print_update_message(current: &str, latest: &str) {
             current.red(),
             latest.green()
         );
-        let _ = writeln!(stderr, "To update, run: {}", "cargo install miasma".blue());
         let _ = writeln!(stderr, "-------------------------------------\n");
     }
 }

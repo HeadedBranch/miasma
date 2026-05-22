@@ -27,8 +27,12 @@ impl Miasma {
 
         #[cfg(unix)]
         if let Some(socket) = &config.unix_socket {
+            use std::os::unix::fs::PermissionsExt;
+
             listener =
                 Listener::Unix(UnixListener::bind(socket).map_err(MiasmaError::UnixSocketBind)?);
+            fs::set_permissions(socket, fs::Permissions::from_mode(0o660))
+                .map_err(MiasmaError::UnixSocketBind)?;
         } else {
             let addr = config.address();
             listener = Listener::Tcp(

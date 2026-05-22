@@ -7,6 +7,7 @@ use thiserror::Error;
 pub enum MiasmaError {
     #[error("failed to fetch poison: {0:?}")]
     PoisonFetch(#[from] reqwest::Error),
+    #[cfg(unix)]
     #[error("failed to create unix socket listener: {0:?}")]
     UnixSocketBind(io::Error),
     #[error("failed to create TCP listener: {0:?}")]
