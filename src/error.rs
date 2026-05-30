@@ -2,6 +2,8 @@ use std::io;
 
 use thiserror::Error;
 
+use crate::metrics::MetricsError;
+
 /// Errors that may occur when initializing or running Miasma.
 #[derive(Error, Debug)]
 pub enum MiasmaError {
@@ -14,4 +16,6 @@ pub enum MiasmaError {
     TcpBind(io::Error),
     #[error("miasma's server exited unexpectedly: {0:?}")]
     ServerRuntime(io::Error),
+    #[error(transparent)]
+    Metrics(#[from] MetricsError),
 }

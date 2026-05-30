@@ -1,7 +1,7 @@
 mod app;
 mod config;
 mod error;
-mod logger;
+mod metrics;
 mod poison;
 mod response_templates;
 mod router;

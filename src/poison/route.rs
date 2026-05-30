@@ -20,7 +20,10 @@ pub async fn serve_poison(
         Ok(p) => p,
         Err(e) => {
             eprintln!("Error fetching from {}: {e}", config.poison_source);
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            // 502 (bad gateway) is the technically correct status code for this case,
+            // however, we don't want to leak that we're relying on an upstream
+            // service (the poison source). 503 indicates we're temporarily unavailable.
+            return StatusCode::SERVICE_UNAVAILABLE.into_response();
         }
     };
 

@@ -103,7 +103,12 @@ When we're done, scrapers will be trapped like so:
 Within our site, we'll include a few hidden links leading to `/naughty-bots`.
 
 ```html
-<a href="/naughty-bots" style="display: none;" aria-hidden="true" tabindex="-1">
+<a
+  href="/naughty-bots/"
+  style="display: none;"
+  aria-hidden="true"
+  tabindex="-1"
+>
   Amazing high quality data here!
 </a>
 ```
@@ -112,7 +117,7 @@ The `style="display: none;"`, `aria-hidden="true"`, and `tabindex="-1"` attribut
 
 ### Configuring our Nginx Proxy
 
-Since our hidden links point to `/naughty-bots`, we'll configure this path to proxy _Miasma_. Let's assume we're running _Miasma_ on port `9855`.
+Since our hidden links point to `/naughty-bots/`, we'll configure this path to proxy requests to _Miasma_. Let's assume we're running _Miasma_ on port `9855`.
 
 We'll also set up aggressive rate limiting based on the scraper's user agent to help ensure we don't accidentally DDoS ourselves.
 
@@ -122,19 +127,23 @@ http {
   limit_req_zone $http_user_agent zone=miasma:8m rate=1r/s;
 
   server {
-    location ~ ^/naughty-bots($|/.*)$ {
-      # Rate limit via the 'miasma' zone with no 429 delay
+    location = /naughty-bots {
+      port_in_redirect off;
+      return 301 /naughty-bots/;
+    }
+    location /naughty-bots/ {
+      # Rate limit via the 'miasma' zone with no queueing
       limit_req_status 429;
       limit_req zone=miasma burst=5 nodelay;
 
       # Proxy requests to Miasma
-      proxy_pass http://localhost:9855;
+      proxy_pass http://localhost:9855/;
     }
   }
 }
 ```
 
-This will match all variations of the `/naughty-bots` path -> `/naughty-bots`, `/naughty-bots/`, `/naughty-bots/12345`, etc.
+This configuration will catch all variations of the `/naughty-bots` path -> `/naughty-bots`, `/naughty-bots/`, `/naughty-bots/12345`, etc.
 
 ### Run _Miasma_
 
@@ -142,9 +151,9 @@ Lastly, we'll start _Miasma_ and specify `/naughty-bots` as the link prefix. Thi
 
 Let's limit the number of max in-flight connections to 50. At 50 connections, we can expect 50-60 MB peak memory usage. Note that any requests exceeding this limit will immediately receive a **429** response rather than being added to a queue.
 
-We'll also force _Miasma_ to gzip all responses regardless of scrapers' `Accept-Encoding` header. Since gzipped responses are significantly smaller, this will help us cut down on egress costs.
+We'll also force _Miasma_ to gzip compress all responses regardless of scrapers' `Accept-Encoding` header. Since gzipped responses are significantly smaller, this will help us cut down on egress costs.
 
-While we could keep scrapers trapped forever, we'll use the link count and max depth options to let scrapers go after they consume ~100K poisoned pages. With this setup, _Miasma_ will send around **250MB** in total per scraper.
+While we could keep scrapers trapped forever, we'll use the link count and max depth options to let scrapers go after they consume ~100K poisoned pages. With this setup, _Miasma_ will send around **250MB** of total data per scraper.
 
 ```sh
 miasma --link-prefix '/naughty-bots' -p 9855 -c 50 --force-gzip --link-count 5 --max-depth 8
@@ -169,22 +178,29 @@ User-agent: *
 Disallow: /naughty-bots
 ```
 
+## Metrics
+
+_Miasma_ offers the ability to track scraper request counts per unique User-Agent. This can be useful for identifying which bots are hitting your site most heavily. Metrics are written to a local SQLite database file and can be viewed at an endpoint of your choosing.
+
 ## Configuration
 
 _Miasma_ can be configured via its CLI options:
 
-| Option              | Default                        | Description                                                                                                                                                                                                                                                             |
-| ------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `port`              | `9999`                         | The port the server should bind to.                                                                                                                                                                                                                                     |
-| `host`              | `localhost`                    | The host address the server should bind to.                                                                                                                                                                                                                             |
-| `unix-socket`       |                                | Bind to a Unix domain socket rather than a TCP address. _Only available on Unix-like systems._                                                                                                                                                                          |
-| `max-in-flight`     | `500`                          | Maximum number of allowable in-flight requests. Requests received when in flight is exceeded will receive a _429_ response. **_Miasma's_ memory usage scales directly with the number of in-flight requests - set this to a lower value if memory usage is a concern.** |
-| `link-prefix`       | `/`                            | Prefix for self-directing links. This should be the path where you host _Miasma_, e.g. `/naughty-bots`.                                                                                                                                                                 |
-| `link-count`        | `5`                            | Number of self-directing links to include in each response page.                                                                                                                                                                                                        |
-| `max-depth`         | `none`                         | Stop generating links once the scraper reaches the specified depth. This allows you to cut off scrapers after serving a desired amount of poison. _Use this in tandem with `link-count` to keep the numbers of active scrapers down to a manageable level._             |
-| `force-gzip`        | `false`                        | Always gzip responses regardless of the client's _Accept-Encoding_ header. **Forcing compression can help reduce egress costs.**                                                                                                                                        |
-| `unsafe-allow-html` | `false`                        | Don't escape HTML characters in the poison source's responses. Escaping is enabled by default to prevent unintended client-side JavaScript execution. **Use this option with care.**                                                                                    |
-| `poison-source`     | `https://rnsaffn.com/poison2/` | Proxy source for poisoned training data.                                                                                                                                                                                                                                |
+| Option                | Default                        | Description                                                                                                                                                                                                                                                             |
+| --------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `port`                | `9999`                         | The port the server should bind to.                                                                                                                                                                                                                                     |
+| `host`                | `localhost`                    | The host address the server should bind to.                                                                                                                                                                                                                             |
+| `unix-socket`         |                                | Bind to a Unix domain socket rather than a TCP address. _Only available on Unix-like systems._                                                                                                                                                                          |
+| `max-in-flight`       | `500`                          | Maximum number of allowable in-flight requests. Requests received when in flight is exceeded will receive a _429_ response. **_Miasma's_ memory usage scales directly with the number of in-flight requests - set this to a lower value if memory usage is a concern.** |
+| `link-prefix`         | `/`                            | Prefix for self-directing links. This should be the path where you host _Miasma_, e.g. `/naughty-bots`.                                                                                                                                                                 |
+| `link-count`          | `5`                            | Number of self-directing links to include in each response page.                                                                                                                                                                                                        |
+| `max-depth`           | `none`                         | Stop generating links once the scraper reaches the specified depth. This allows you to cut off scrapers after serving a desired amount of poison. _Use this in tandem with `link-count` to keep the numbers of active scrapers down to a manageable level._             |
+| `force-gzip`          | `false`                        | Always gzip responses regardless of the client's _Accept-Encoding_ header. **Forcing compression can help reduce egress costs.**                                                                                                                                        |
+| `unsafe-allow-html`   | `false`                        | Don't escape HTML characters in the poison source's responses. Escaping is enabled by default to prevent unintended client-side JavaScript execution. **Use this option with care.**                                                                                    |
+| `poison-source`       | `https://rnsaffn.com/poison2/` | Proxy source for poisoned training data.                                                                                                                                                                                                                                |
+| `metrics-db-path`     |                                | Path to SQLite database file to store metrics data. _Miasma_ will create a database at this location if one does not already exist.                                                                                                                                     |
+| `metrics-credentials` |                                | Basic auth credentials required to access _Miasma's_ metrics page. Must match the format `<username>:<password>`.                                                                                                                                                       |
+| `metrics-endpoint`    | `/metrics`                     | Endpoint at which _Miasma's_ metrics will be served.                                                                                                                                                                                                                    |
 
 ## Disclaimer
 

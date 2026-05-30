@@ -1,20 +1,17 @@
 #[cfg(unix)]
 use std::fs;
 
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-use std::sync::LazyLock;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::UnixListener;
+use tokio::sync::Mutex;
 
 use crate::MiasmaConfig;
 use crate::MiasmaError;
 use crate::new_miasma_router;
 
-use crate::logger::Logger;
-
-static LOGGER: LazyLock<Logger> = LazyLock::new(Logger::new);
+use crate::metrics::Metrics;
 
 enum Listener {
     Tcp(TcpListener),
@@ -25,7 +22,7 @@ enum Listener {
 pub struct Miasma {
     listener: Listener,
     config: &'static MiasmaConfig,
-    logger: &'static Logger,
+    metrics: Option<Arc<Mutex<Metrics>>>,
 }
 
 impl Miasma {
@@ -59,10 +56,22 @@ impl Miasma {
             );
         }
 
+        let metrics = if let Some(metrics_config) = &config.metrics {
+            let metrics = Metrics::new(
+                metrics_config
+                    .metrics_db_path
+                    .clone()
+                    .expect("metrics_db_path should be set if metrics is Some"),
+            )?;
+            Some(Arc::new(Mutex::new(metrics)))
+        } else {
+            None
+        };
+
         Ok(Self {
             listener,
             config,
-            logger: &LOGGER,
+            metrics,
         })
     }
 
@@ -71,7 +80,7 @@ impl Miasma {
     where
         S: Future<Output = ()> + Send + 'static,
     {
-        let router = new_miasma_router(self.config, self.logger);
+        let router = new_miasma_router(self.config, self.metrics.clone());
 
         let server_result = match self.listener {
             Listener::Tcp(tcp) => {
@@ -87,7 +96,12 @@ impl Miasma {
             }
         };
 
-        self.logger.flush_to_db();
+        if let Some(metrics) = self.metrics {
+            match metrics.try_lock() {
+                Ok(mut l) => l.flush_blocking(),
+                Err(e) => eprintln!("failed to get metrics lock: {e}"),
+            }
+        }
 
         #[cfg(unix)]
         if let Some(socket) = &self.config.unix_socket
