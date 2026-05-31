@@ -57,7 +57,7 @@ pub struct MiasmaConfig {
     pub unsafe_allow_html: bool,
 
     /// Poisoned training data source
-    #[arg(long, default_value_t = Url::parse("https://rnsaffn.com/poison2/").unwrap())]
+    #[arg(long, default_value_t = Url::parse("https://rnsaffn.com/poison2/?mask=0").unwrap())]
     pub poison_source: Url,
 
     // NOTE: if this value is Some, all sub-fields will also be Some

@@ -7,6 +7,10 @@ on:
         description: "Tag to push and release. Should match format <major>.<minor>.<patch> with no prefix or suffix."
         required: true
         type: string
+      release-notes:
+        description: "Optional notes to be in included in the GitHub release."
+        required: false
+        type: string
       skip-cargo-publish:
         description: "Skip publishing to crates.io. You should ONLY do this if publishing previously succeeded but releasing to GitHub failed."
         required: false
@@ -136,6 +140,7 @@ jobs:
         with:
           files: dist/**/*
           tag_name: ${{ needs.Push-Tag.outputs.github_tag }}
+          body: ${{ inputs.release-notes }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
