@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod error;
+mod metrics;
 mod poison;
 mod response_templates;
 mod router;

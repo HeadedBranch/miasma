@@ -5,7 +5,8 @@ use std::{
     str::FromStr,
 };
 
-use clap::Parser;
+use base64::prelude::*;
+use clap::{Args, Parser};
 use colored::Colorize;
 use url::Url;
 
@@ -58,6 +59,29 @@ pub struct MiasmaConfig {
     /// Poisoned training data source
     #[arg(long, default_value_t = Url::parse("https://rnsaffn.com/poison2/").unwrap())]
     pub poison_source: Url,
+
+    // NOTE: if this value is Some, all sub-fields will also be Some
+    #[command(flatten)]
+    pub metrics: Option<MetricsConfig>,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct MetricsConfig {
+    /// Path to SQLite database file (e.g. 'miasma.db')
+    #[arg(long, requires_all = ["metrics_credentials"])]
+    pub metrics_db_path: Option<String>,
+
+    /// Basic auth credentials required to access request metrics -
+    /// must match format '<username>:<password>'
+    #[arg(long, requires_all = ["metrics_db_path"])]
+    pub metrics_credentials: Option<MetricsCredentials>,
+
+    /// Endpoint at which request metrics will be served
+    #[arg(
+        long, default_value = "/metrics",
+        requires_all = ["metrics_db_path", "metrics_credentials"],
+    )]
+    pub metrics_endpoint: String,
 }
 
 impl MiasmaConfig {
@@ -108,6 +132,25 @@ impl MiasmaConfig {
         if self.unsafe_allow_html {
             eprintln!("{} HTML escaping is disabled...", "Warning:".red());
         }
+
+        if let Some(metrics) = &self.metrics {
+            eprintln!(
+                "Request metrics are available at {} with credentials {}.",
+                metrics.metrics_endpoint.blue(),
+                metrics
+                    .metrics_credentials
+                    .as_ref()
+                    .unwrap()
+                    .to_string()
+                    .blue(),
+            );
+            eprintln!(
+                "Metrics will be written to the SQLite database at {}.",
+                metrics.metrics_db_path.as_ref().unwrap().blue(),
+            );
+        } else {
+            eprintln!("Metrics are disabled and will not be collected...")
+        }
     }
 
     /// Get the full 'host:port' address.
@@ -131,6 +174,7 @@ impl Default for MiasmaConfig {
             force_gzip: false,
             unsafe_allow_html: false,
             poison_source: Url::parse("https://example.com").unwrap(),
+            metrics: None,
         }
     }
 }
@@ -187,6 +231,45 @@ impl FromStr for MaxDepth {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct MetricsCredentials {
+    username: String,
+    password: String,
+}
+
+impl MetricsCredentials {
+    /// Returns credentials as a base 64 encoded string.
+    pub fn encoded_credentials(&self) -> String {
+        BASE64_STANDARD.encode(format!("{}:{}", self.username, self.password))
+    }
+}
+
+impl Display for MetricsCredentials {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}:******", self.username))
+    }
+}
+
+impl FromStr for MetricsCredentials {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some((username, password)) = s.split_once(':') else {
+            return Err("credentials must match format '<username>:<password>'");
+        };
+        if username.is_empty() {
+            return Err("username must not be empty");
+        }
+        if password.is_empty() {
+            return Err("password must not be empty");
+        }
+        Ok(Self {
+            username: username.to_owned(),
+            password: password.to_owned(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +299,26 @@ mod tests {
         };
 
         assert_eq!(config.address(), "127.0.0.1:8080");
+    }
+
+    #[test]
+    fn metrics_credentials_validation() {
+        let cases = [
+            ("", false, ("", "")),
+            ("usernamepassword", false, ("", "")),
+            (":password", false, ("", "")),
+            ("username:", false, ("", "")),
+            ("username:password", true, ("username", "password")),
+        ];
+
+        for (input, valid, (uname, pword)) in cases {
+            match MetricsCredentials::from_str(input) {
+                Err(_) => assert!(!valid),
+                Ok(MetricsCredentials { username, password }) => {
+                    assert_eq!(username, uname);
+                    assert_eq!(password, pword);
+                }
+            }
+        }
     }
 }

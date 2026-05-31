@@ -1,0 +1,71 @@
+:root {
+  font-family: sans-serif;
+}
+
+body {
+  max-width: 120ch;
+  margin-inline: auto;
+}
+
+h1 {
+  font-family: "Poetsen One", sans-serif;
+}
+
+h1,
+h2 {
+  text-align: center;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+tbody {
+  font-family: monospace;
+}
+
+th {
+  border-bottom: 3px solid #999;
+}
+
+th,
+td {
+  text-align: left;
+  border: 1px solid #e5e5e5;
+  padding: 8px;
+}
+
+.user-agent {
+  word-break: break-all;
+}
+
+.request-count {
+  text-align: right;
+}
+
+.pagination {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.link,
+.link-disabled {
+  border: 1px solid #e5e5e5;
+  padding: 0.5rem;
+  width: 6rem;
+  text-align: center;
+  color: #3b82f6;
+  font-size: 1.1rem;
+}
+
+.link-disabled {
+  color: gray;
+  pointer-events: none;
+  text-decoration: none;
+}

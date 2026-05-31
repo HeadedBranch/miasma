@@ -11,10 +11,12 @@ exclude = [".github"]
 [dependencies]
 async-compression = { version = "0.4.41", features = ["gzip"] }
 async-stream = "0.3.6"
-axum = "0.8.8"
+axum = { version = "0.8.8", features = ["macros"] }
+base64 = "0.22.1"
 bytes = "1.11.1"
 clap = { version = "4.6.0", features = ["derive", "env"] }
 colored = "3.1.1"
+diesel = { version = "2.3.9", features = ["sqlite"] }
 fhtml = "0.6.1"
 futures = "0.3.32"
 rand = "0.10.0"
@@ -31,6 +33,7 @@ http-body-util = "0.1.2"
 gag = "1.0.0"
 serial_test = "3.4.0"
 scraper = "0.26.0"
+tempfile = "3.27.0"
 
 # On Linux, use default TLS
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -38,6 +41,9 @@ reqwest = { version = "0.13.2", default-features = false, features = ["default-t
 # On Mac & Windows, use native TLS
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
 reqwest = { version = "0.13.2", default-features = false, features = ["native-tls", "gzip", "json", "http2", "charset", "system-proxy", "stream"] }
+# On Windows, bundle libsqlite
+[target.'cfg(target_os = "windows")'.dependencies]
+libsqlite3-sys = { version = "0.37.0", features = ["bundled"] }
 
 # Optimize for smallest possible binary size
 [profile.release]

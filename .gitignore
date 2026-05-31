@@ -6,3 +6,6 @@
 
 # Don't look
 .env
+
+# Metrics SQLite Database
+miasma.db
