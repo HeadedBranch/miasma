@@ -7,9 +7,29 @@ local-ci:
     cargo clippy --no-deps --all-targets
     cargo test
     cargo publish --dry-run --allow-dirty
+    just docker-test
 
 docker-build *args:
-    docker build -t miasma:local-dev . {{args}}
+    docker build -t miasma:local-dev . {{ args }}
 
 docker-run *args:
-    docker run --rm -p 9999:9999 miasma:local-dev {{args}}
+    docker run --rm -p 9999:9999 miasma:local-dev {{ args }}
+
+docker-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    just docker-build
+
+    container_id=$(docker run -d --rm \
+        -p 9999:9999 \
+        miasma:local-dev \
+        --poison-source https://httpbin.org/status/200 \
+    )
+
+    trap 'docker rm -f "$container_id"' EXIT
+
+    sleep 5
+    curl -fsS http://localhost:9999
+
+    echo OK

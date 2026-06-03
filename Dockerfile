@@ -10,6 +10,9 @@ RUN cargo build --release
 # --- RUNTIME ---
 FROM gcr.io/distroless/cc-debian12
 
+# Copy Sqlite Binary
+COPY --from=builder /usr/lib/*-linux-gnu/libsqlite3.so* /usr/lib/
+
 COPY --from=builder /build/target/release/miasma /usr/local/bin/miasma
 
 # make app reachable outside the container

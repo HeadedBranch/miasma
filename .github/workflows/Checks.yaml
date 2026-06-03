@@ -33,3 +33,20 @@ jobs:
 
       - name: Verify Publish-Ready
         run: cargo publish --dry-run
+
+      - name: Test Docker Image
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -euo pipefail
+
+          docker build -t miasma:test .
+
+          container_id=$(docker run -d --rm \
+            -p 9999:9999 \
+            miasma:test \
+            --poison-source https://httpbin.org/status/200 \
+          )
+          trap 'docker rm -f "$container_id"' EXIT
+
+          sleep 5
+          curl -fsS curl http://localhost:9999
