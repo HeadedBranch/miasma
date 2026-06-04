@@ -9,3 +9,7 @@
 
 # Metrics SQLite Database
 miasma.db
+
+# direnv
+.direnv/
+.envrc
