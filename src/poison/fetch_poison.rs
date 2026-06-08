@@ -20,11 +20,11 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
 
 /// Fetch poisoned training data.
 pub async fn stream_poison(
-    poison_source: &Url,
+    poison_source: Url,
     disable_html_escaping: bool,
 ) -> Result<impl MiasmaStream, MiasmaError> {
     let mut poison_stream = CLIENT
-        .get(poison_source.clone())
+        .get(poison_source)
         .send()
         .await?
         .error_for_status()?

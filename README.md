@@ -24,6 +24,8 @@ _Miasma_ is lightning fast and has a minimal memory footprint - you should not h
 
 You can run _Miasma_ locally, or with the official [docker image](https://hub.docker.com/r/austinweeks/miasma).
 
+If you would like to incorporate _Miasma_ into an existing Rust server, you may also [use _Miasma_ as a library](https://docs.rs/miasma/).
+
 ### Running Locally
 
 Install with [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) (recommended):

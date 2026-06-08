@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     body::Body,
     http::{Response, StatusCode},
@@ -7,16 +9,21 @@ use reqwest::header;
 use tokio::sync::OwnedSemaphorePermit;
 
 use super::{LinkSettings, fetch_poison::stream_poison, gzip, response_stream};
-use crate::config::MiasmaConfig;
+use crate::MiasmaConfig;
 
 /// Miasma's poison serving trap.
 pub async fn serve_poison(
-    config: &'static MiasmaConfig,
+    config: Arc<MiasmaConfig>,
     in_flight_permit: OwnedSemaphorePermit,
     gzip_response: bool,
-    link_settings: LinkSettings<'static>,
+    link_settings: LinkSettings,
 ) -> impl IntoResponse {
-    let poison = match stream_poison(&config.poison_source, config.unsafe_allow_html).await {
+    let poison = match stream_poison(
+        config.as_ref().poison_source.clone(),
+        config.unsafe_allow_html,
+    )
+    .await
+    {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Error fetching from {}: {e}", config.poison_source);

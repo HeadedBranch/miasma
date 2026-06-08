@@ -24,12 +24,12 @@ docker-test:
     container_id=$(docker run -d --rm \
         -p 9999:9999 \
         miasma:local-dev \
-        --poison-source https://httpbin.org/status/200 \
+        --poison-source https://example.com \
     )
 
     trap 'docker rm -f "$container_id"' EXIT
 
     sleep 5
-    curl -fsS http://localhost:9999
+    curl -fsS http://localhost:9999 -o /dev/null
 
     echo OK

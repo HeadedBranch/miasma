@@ -11,13 +11,15 @@ use reqwest::{StatusCode, header};
 use serde::Deserialize;
 use tokio::sync::{Mutex, Semaphore, TryAcquireError};
 
-use crate::metrics::Metrics;
-use crate::poison::{self, LinkSettings};
-use crate::{MiasmaConfig, metrics};
+use crate::{
+    MiasmaConfig, MiasmaError,
+    metrics::{self, Metrics},
+    poison::{self, LinkSettings},
+};
 
 #[derive(Deserialize)]
 pub struct QueryParams {
-    /// We use 'page' instead of depth to look more convincing to scrapers
+    /// We use 'page' instead of depth to look more convincing to scrapers.
     page: Option<u32>,
 }
 impl QueryParams {
@@ -27,23 +29,46 @@ impl QueryParams {
 #[derive(Clone)]
 pub struct AppState {
     metrics: Option<Arc<Mutex<Metrics>>>,
-    config: &'static MiasmaConfig,
+    config: Arc<MiasmaConfig>,
     in_flight_sem: Arc<Semaphore>,
 }
 
-/// Build a new `axum::Router` for Miasma's routes.
-pub fn new_miasma_router(
-    config: &'static MiasmaConfig,
-    counter: Option<Arc<Mutex<Metrics>>>,
-) -> Router {
-    Router::new()
+/// Build a new axum `Router` serving Miasma's routes.
+///
+/// ## Usage
+///
+/// ```
+/// use miasma::MiasmaConfig;
+/// use axum::{Router, routing::get};
+///
+/// let config = MiasmaConfig::builder()
+///     .link_prefix("/bots")
+///     .build();
+///
+/// let miasma_router = miasma::new_miasma_router(config).unwrap();
+///
+/// let my_router = Router::new()
+///     .route("/", get(|| async { "ok" }))
+///     .nest("/bots", miasma_router);
+/// ```
+pub fn new_miasma_router(config: MiasmaConfig) -> Result<Router, MiasmaError> {
+    let metrics = match &config.metrics {
+        None => None,
+        Some(c) => {
+            let metrics = Metrics::new(c.db_path.clone())?;
+            Some(Arc::new(Mutex::new(metrics)))
+        }
+    };
+    let metrics_router = metrics::new_metrics_router(&config.metrics, metrics.clone());
+    let router = Router::new()
         .fallback(get(app_handler))
         .with_state(AppState {
-            config,
+            metrics,
             in_flight_sem: Arc::new(Semaphore::new(config.max_in_flight as usize)),
-            metrics: counter.clone(),
+            config: Arc::new(config),
         })
-        .merge(metrics::new_metrics_router(&config.metrics, counter))
+        .merge(metrics_router);
+    Ok(router)
 }
 
 #[axum::debug_handler(state = AppState)]
@@ -87,7 +112,7 @@ async fn app_handler(
         counter.lock().await.count_request(user_agent);
     }
 
-    let link_settings = LinkSettings::next(state.config, current_depth);
+    let link_settings = LinkSettings::next(state.config.clone(), current_depth);
 
     poison::serve_poison(state.config, in_flight_permit, gzip_response, link_settings)
         .await
@@ -101,33 +126,36 @@ mod tests {
         body::Body,
         http::{Request, StatusCode, header::RETRY_AFTER},
     };
-    use std::sync::LazyLock;
     use tower::ServiceExt;
+    use url::Url;
 
-    static TEST_CONFIG: LazyLock<MiasmaConfig> = LazyLock::new(|| MiasmaConfig {
-        max_in_flight: 1,
-        ..Default::default()
-    });
-
-    // This hits example.com over the network; move to an integration test suite eventually.
     #[tokio::test]
-    async fn happy_path_works() {
-        let app = new_miasma_router(&TEST_CONFIG, None);
+    async fn happy_path() {
+        let app = new_miasma_router(MiasmaConfig {
+            max_in_flight: 1,
+            poison_source: Url::parse("https://example.com").unwrap(),
+            ..Default::default()
+        })
+        .unwrap();
 
         let response = app
-            .oneshot(Request::builder().uri("/foo").body(Body::empty()).unwrap())
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
-        // could be 500 if the network is down or 200 if it works, but shouldn't be 429.
-        assert_ne!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
     async fn returns_429_when_max_in_flight_reached() {
-        let app = new_miasma_router(&TEST_CONFIG, None);
-        let req1 = Request::builder().uri("/foo").body(Body::empty()).unwrap();
-        let req2 = Request::builder().uri("/foo").body(Body::empty()).unwrap();
+        let app = new_miasma_router(MiasmaConfig {
+            max_in_flight: 1,
+            poison_source: Url::parse("https://example.com").unwrap(),
+            ..Default::default()
+        })
+        .unwrap();
+        let req1 = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let req2 = Request::builder().uri("/").body(Body::empty()).unwrap();
 
         let (res1, res2) = tokio::join!(app.clone().oneshot(req1), app.oneshot(req2));
 
