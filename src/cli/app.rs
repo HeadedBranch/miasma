@@ -1,17 +1,14 @@
 #[cfg(unix)]
 use std::fs;
 
-use std::sync::Arc;
 use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::UnixListener;
-use tokio::sync::Mutex;
 
-use crate::MiasmaConfig;
-use crate::MiasmaError;
-use crate::new_miasma_router;
+use miasma::new_miasma_router;
+use miasma::{MiasmaConfig, MiasmaError};
 
-use crate::metrics::Metrics;
+use crate::cli::AppArgs;
 
 enum Listener {
     Tcp(TcpListener),
@@ -19,19 +16,20 @@ enum Listener {
     Unix(UnixListener),
 }
 
-pub struct Miasma {
+pub struct App {
     listener: Listener,
-    config: &'static MiasmaConfig,
-    metrics: Option<Arc<Mutex<Metrics>>>,
+    config: MiasmaConfig,
+    #[cfg(unix)]
+    socket: Option<String>,
 }
 
-impl Miasma {
+impl App {
     /// Create a new Miasma server.
-    pub async fn new(config: &'static MiasmaConfig) -> Result<Self, MiasmaError> {
+    pub async fn new(args: AppArgs) -> Result<Self, MiasmaError> {
         let listener;
 
         #[cfg(unix)]
-        if let Some(socket) = &config.unix_socket {
+        if let Some(socket) = &args.unix_socket {
             use std::os::unix::fs::PermissionsExt;
 
             listener =
@@ -39,7 +37,7 @@ impl Miasma {
             fs::set_permissions(socket, fs::Permissions::from_mode(0o660))
                 .map_err(MiasmaError::UnixSocketBind)?;
         } else {
-            let addr = config.address();
+            let addr = args.address();
             listener = Listener::Tcp(
                 TcpListener::bind(&addr)
                     .await
@@ -48,7 +46,7 @@ impl Miasma {
         }
         #[cfg(not(unix))]
         {
-            let addr = config.address();
+            let addr = args.address();
             listener = Listener::Tcp(
                 TcpListener::bind(&addr)
                     .await
@@ -56,22 +54,11 @@ impl Miasma {
             );
         }
 
-        let metrics = if let Some(metrics_config) = &config.metrics {
-            let metrics = Metrics::new(
-                metrics_config
-                    .metrics_db_path
-                    .clone()
-                    .expect("metrics_db_path should be set if metrics is Some"),
-            )?;
-            Some(Arc::new(Mutex::new(metrics)))
-        } else {
-            None
-        };
-
         Ok(Self {
             listener,
-            config,
-            metrics,
+            config: args.to_miasma_config(),
+            #[cfg(unix)]
+            socket: args.unix_socket,
         })
     }
 
@@ -80,7 +67,7 @@ impl Miasma {
     where
         S: Future<Output = ()> + Send + 'static,
     {
-        let router = new_miasma_router(self.config, self.metrics.clone());
+        let router = new_miasma_router(self.config)?;
 
         let server_result = match self.listener {
             Listener::Tcp(tcp) => {
@@ -96,15 +83,8 @@ impl Miasma {
             }
         };
 
-        if let Some(metrics) = self.metrics {
-            match metrics.try_lock() {
-                Ok(mut l) => l.flush_blocking(),
-                Err(e) => eprintln!("failed to get metrics lock: {e}"),
-            }
-        }
-
         #[cfg(unix)]
-        if let Some(socket) = &self.config.unix_socket
+        if let Some(socket) = &self.socket
             && let Err(e) = fs::remove_file(socket)
         {
             use colored::Colorize;
