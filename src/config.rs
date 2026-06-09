@@ -92,7 +92,7 @@ impl Default for MiasmaConfig {
 impl MiasmaConfigBuilder {
     /// Enables the optional requests metrics feature.
     ///
-    /// - `db_path` - path to SQLite database file where request metrics will be stored.
+    /// - `db_path` - path to `SQLite` database file where request metrics will be stored.
     /// - `endpoint` - endpoint at which the router should server request metrics.
     /// - `username` - basic auth username required to access request metrics.
     /// - `password` - basic auth password required to access request metrics.
@@ -120,6 +120,7 @@ impl MiasmaConfigBuilder {
     }
 
     /// Build the configured `MiasmaConfig`.
+    #[allow(clippy::missing_panics_doc)]
     pub fn build(&self) -> MiasmaConfig {
         self.unsafe_build()
             .expect("build only errors for unset required fields - all config fields are optional")

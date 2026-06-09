@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 
 use crate::config::MetricsConfig;
 
-const RESULTS_PER_PAGE: usize = 50;
+const RESULTS_PER_PAGE: u32 = 50;
 
 #[derive(Clone)]
 pub struct MetricsState {
@@ -21,14 +21,14 @@ pub struct MetricsState {
 }
 
 pub fn new_metrics_router(
-    config: &Option<MetricsConfig>,
+    config: Option<&MetricsConfig>,
     metrics: Option<Arc<Mutex<Metrics>>>,
 ) -> Router {
     let Some(config) = config else {
         return Router::new();
     };
     let encoded_creds = config.encoded_credentials();
-    let auth_value = format!("Basic {encoded_creds}",);
+    let auth_value = format!("Basic {encoded_creds}");
 
     Router::new()
         .route(&config.endpoint, get(page::metrics_handler))
@@ -57,7 +57,7 @@ mod test {
         let config = MetricsConfig::new(db_path, "admin", "admin", "/metrics");
         let metrics = Arc::new(Mutex::new(Metrics::new(db_path.to_owned()).unwrap()));
 
-        let router = new_metrics_router(&Some(config), Some(metrics));
+        let router = new_metrics_router(Some(config).as_ref(), Some(metrics));
         (router, db_file)
     }
 

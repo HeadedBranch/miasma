@@ -17,13 +17,12 @@ pub fn escape_html_stream(html_stream: impl MiasmaStream) -> impl MiasmaStream {
                 let Some((esc_at_index, escape_seq)) = chunk
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, b)| match *b {
+                    .find_map(|(i, b)| match *b {
                         b'<' => Some((i, &b"&lt;"[..])),
                         b'>' => Some((i, b"&gt;")),
                         b'&' => Some((i, b"&amp;")),
                         _ => None,
                     })
-                    .next()
                 else {
                     yield chunk;
                     break;

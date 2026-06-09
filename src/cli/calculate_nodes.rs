@@ -26,7 +26,7 @@ mod test {
             (5, 3, 31),
             (8, 5, 4681),
             (10, 5, 11111),
-            (7, 9, 6725601),
+            (7, 9, 6_725_601),
         ];
 
         for (link_count, depth, expected) in test_cases {
