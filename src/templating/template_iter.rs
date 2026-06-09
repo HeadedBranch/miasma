@@ -33,6 +33,7 @@ impl Iterator for TemplateIter {
                     self.current += 1;
                     *s
                 }
+                #[allow(clippy::single_match_else)]
                 TemplatePart::Iter(i) => match i.next() {
                     Some(s) => s,
                     None => {

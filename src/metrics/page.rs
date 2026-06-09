@@ -36,7 +36,7 @@ pub async fn metrics_handler(
     let mut counter = state.counter.lock().await;
     counter.flush_blocking();
 
-    let page_number = page.map(|p| if p == 0 { 1 } else { p }).unwrap_or(1);
+    let page_number = page.map_or(1, |p| if p == 0 { 1 } else { p });
     let entries = match counter.list_useragents_by_count(page_number) {
         Ok(v) => v,
         Err(e) => {
@@ -88,7 +88,7 @@ fn stream_metrics_page(
         for (ind, (user_agent, count)) in entries.iter().enumerate() {
             yield Bytes::from(fhtml::format!{
                         <tr>
-                            <td>{ind+1 + (page_number.saturating_sub(1) as usize * RESULTS_PER_PAGE)}</td>
+                            <td>{ind+1 + (page_number.saturating_sub(1) * RESULTS_PER_PAGE) as usize}</td>
                             // Escape the user agent string in case
                             // scrapers try to send us JavaScript.
                             // Very unlikely but a non-zero chance...
@@ -112,7 +112,7 @@ fn stream_metrics_page(
                     </a>
                     <a
                         href={format!("?page={next_page}")}
-                        class={format!("link{}", if entries.len() < RESULTS_PER_PAGE {"-disabled"} else {""})}
+                        class={format!("link{}", if entries.len() < RESULTS_PER_PAGE as usize {"-disabled"} else {""})}
                     >
                         "Next 🡒"
                     </a>

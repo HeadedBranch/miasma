@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{MiasmaConfig, config::LinkPrefix};
 
 /// Controls link generation for a given response.
@@ -18,7 +16,7 @@ pub struct LinkSettingsInner {
 
 impl LinkSettings {
     /// Determine link generation settings based on config and current depth.
-    pub fn next(config: Arc<MiasmaConfig>, current_depth: u32) -> Self {
+    pub fn next(config: &MiasmaConfig, current_depth: u32) -> Self {
         let at_max_depth = config.max_depth.is_some_and(|max| current_depth >= max);
         if at_max_depth {
             return Self::NoLinks;
@@ -44,12 +42,12 @@ mod test {
 
     #[test]
     fn links_if_no_max_depth() {
-        let config = Arc::new(MiasmaConfig {
+        let config = MiasmaConfig {
             max_depth: None,
             ..MiasmaConfig::default()
-        });
+        };
 
-        let link_settings = LinkSettings::next(config.clone(), 0);
+        let link_settings = LinkSettings::next(&config, 0);
         let expected = LinkSettings::Links(LinkSettingsInner {
             count: config.link_count,
             prefix: config.link_prefix.clone(),
@@ -60,12 +58,12 @@ mod test {
 
     #[test]
     fn links_if_not_at_max_depth() {
-        let config = Arc::new(MiasmaConfig {
+        let config = MiasmaConfig {
             max_depth: Some(5),
             ..MiasmaConfig::default()
-        });
+        };
         for current_depth in [0, 1, 2, 3, 4] {
-            let link_settings = LinkSettings::next(config.clone(), current_depth);
+            let link_settings = LinkSettings::next(&config, current_depth);
             let expected = LinkSettings::Links(LinkSettingsInner {
                 count: config.link_count,
                 prefix: config.link_prefix.clone(),
@@ -77,13 +75,13 @@ mod test {
 
     #[test]
     fn no_links_if_at_max_depth() {
-        let config = Arc::new(MiasmaConfig {
+        let config = MiasmaConfig {
             max_depth: Some(5),
             ..MiasmaConfig::default()
-        });
+        };
         for current_depth in [5, 6, 10] {
-            let link_settings = LinkSettings::next(config.clone(), current_depth);
-            assert!(matches!(link_settings, LinkSettings::NoLinks))
+            let link_settings = LinkSettings::next(&config, current_depth);
+            assert!(matches!(link_settings, LinkSettings::NoLinks));
         }
     }
 }

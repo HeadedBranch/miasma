@@ -7,6 +7,7 @@ use crate::metrics::RESULTS_PER_PAGE;
 
 use super::MetricsError;
 
+#[allow(clippy::wildcard_imports)]
 use self::user_agents::dsl::*;
 
 diesel::table! {
@@ -17,7 +18,7 @@ diesel::table! {
 }
 
 pub struct Metrics {
-    counts: HashMap<String, usize>,
+    counts: HashMap<String, i64>,
     unflushed_count: u32,
     db_path: String,
 }
@@ -85,7 +86,7 @@ impl Metrics {
         &mut self,
         page: u32,
     ) -> Result<Vec<(String, i64)>, MetricsError> {
-        let offset = page.saturating_sub(1) * RESULTS_PER_PAGE as u32;
+        let offset = page.saturating_sub(1) * RESULTS_PER_PAGE;
         let mut conn = SqliteConnection::establish(&self.db_path)?;
         let entries = user_agents
             .order_by(count.desc())
@@ -96,7 +97,7 @@ impl Metrics {
     }
 }
 
-fn flush_to_db(counts: HashMap<String, usize>, db_path: &str) {
+fn flush_to_db(counts: HashMap<String, i64>, db_path: &str) {
     let mut conn = match SqliteConnection::establish(db_path) {
         Ok(c) => c,
         Err(e) => {
@@ -109,7 +110,7 @@ fn flush_to_db(counts: HashMap<String, usize>, db_path: &str) {
 
     let rows = counts
         .into_iter()
-        .map(|(ua, c)| (agent.eq(ua), count.eq(c as i64)))
+        .map(|(ua, c)| (agent.eq(ua), count.eq(c)))
         .collect::<Vec<_>>();
 
     if let Err(e) = diesel::insert_into(user_agents)
@@ -179,7 +180,7 @@ mod test {
                 .find(|(ua, _)| ua.as_str() == expected_ua)
                 .expect("expected row not found in test db");
             assert_eq!(actual_ua, &expected_ua);
-            assert_eq!(*actual_count, expected_count as i64);
+            assert_eq!(*actual_count, expected_count);
         }
     }
 }

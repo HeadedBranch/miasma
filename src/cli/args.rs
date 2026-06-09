@@ -125,7 +125,9 @@ impl FromStr for MaxDepth {
 
 /// If this value is Some, all sub-fields will also be Some
 #[derive(Args, Debug, Clone)]
+#[allow(clippy::struct_field_names)]
 pub struct MetricsConfig {
+    #[allow(clippy::doc_markdown)]
     /// Path to SQLite database file (e.g. 'miasma.db')
     #[arg(long, requires = "metrics_credentials")]
     #[arg(help_heading = "Metrics Options")]
@@ -188,7 +190,7 @@ impl AppArgs {
         let gzip_msg = if self.force_gzip {
             format!(" and {}", "forced gzip compression".blue())
         } else {
-            "".to_owned()
+            String::new()
         };
         #[cfg(unix)]
         let binding = match &self.unix_socket {
@@ -206,7 +208,7 @@ impl AppArgs {
         eprintln!(
             "Serving poisoned training data from {} at {} with {} links per response and a max depth of {}...",
             self.poison_source.to_string().blue(),
-            self.link_prefix.to_string().blue(),
+            self.link_prefix.blue(),
             self.link_count.to_string().blue(),
             self.max_depth.to_string().blue(),
         );
@@ -214,12 +216,10 @@ impl AppArgs {
         let est_pages_per_bot = match self.max_depth.0 {
             None => "infinite".blue(),
             Some(depth) => cli::page_count_per_bot(self.link_count, depth)
-                .map(|n| n.to_string().green())
-                .unwrap_or_else(|| "too big!".red()),
+                .map_or_else(|| "too big!".red(), |n| n.to_string().green()),
         };
         eprintln!(
-            "Assuming all links are explored, each scraper will consume {} poison pages.",
-            est_pages_per_bot
+            "Assuming all links are explored, each scraper will consume {est_pages_per_bot} poison pages."
         );
 
         if self.unsafe_allow_html {
@@ -242,7 +242,7 @@ impl AppArgs {
                 metrics.metrics_db_path.as_ref().unwrap().blue(),
             );
         } else {
-            eprintln!("Metrics are disabled and will not be collected...")
+            eprintln!("Metrics are disabled and will not be collected...");
         }
     }
 
@@ -264,7 +264,7 @@ mod test {
             #[cfg(unix)]
             unix_socket: None,
             port: 0,
-            host: "".to_owned(),
+            host: String::new(),
 
             max_in_flight: 8,
             link_prefix: "/bots".to_owned(),
@@ -307,15 +307,15 @@ mod test {
     fn args_address() {
         let config = AppArgs {
             #[cfg(unix)]
-            unix_socket: Default::default(),
+            unix_socket: None,
             port: 8080,
             host: "127.0.0.1".to_owned(),
             max_in_flight: Default::default(),
-            link_prefix: Default::default(),
+            link_prefix: String::default(),
             link_count: Default::default(),
             force_gzip: Default::default(),
             unsafe_allow_html: Default::default(),
-            metrics: Default::default(),
+            metrics: None,
             max_depth: MaxDepth(None),
             poison_source: Url::parse("https://example.com").unwrap(),
         };
