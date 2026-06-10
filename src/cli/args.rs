@@ -201,8 +201,15 @@ impl AppArgs {
             let conf = std::fs::read_to_string(file).unwrap();
             let conf = serde_json::from_str::<ConfigFile>(&conf).expect("Parsing the config failed");
             // Maps the common fields between structs
-            struct_mapper!(args => conf, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth);
+            struct_mapper!(args => conf, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
             args.poison_source = Url::parse(&conf.poison_source).expect("Everything should have a default value");
+            if conf.server_address.starts_with("unix:") {
+                args.unix_socket = Some(conf.server_address.get(5..).expect("File not specified").to_string());
+            } else {
+                let mut addr = conf.server_address.split(":");
+                args.host = addr.next().unwrap().to_string();
+                args.port = u16::from_str(addr.next().unwrap()).expect("Invalid port");
+            }
         }
         args
     }
@@ -277,6 +284,7 @@ impl AppArgs {
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct ConfigFile {
     max_in_flight: u32,
     link_prefix: String,
@@ -285,25 +293,24 @@ struct ConfigFile {
     force_gzip: bool,
     unsafe_allow_html: bool,
     poison_source: String,
-    server: ServerTypes,
+    server_address: String,
     metrics: Option<MetricsConfig>,
 }
 
-#[derive(Deserialize)]
-enum ServerTypes {
-    Tcp(TcpSettings),
-    #[cfg(unix)]
-    Unix(UnixSettings),
-}
-#[derive(Deserialize)]
-struct TcpSettings {
-    port: u16,
-    host: String,
-}
-#[cfg(unix)]
-#[derive(Deserialize)]
-struct UnixSettings {
-    path: String,
+impl Default for ConfigFile {
+    fn default() -> Self {
+        ConfigFile {
+            max_in_flight: miasma::DEFAULT_MAX_IN_FLIGHT,
+            link_prefix: String::from("/"),
+            link_count: miasma::DEFAULT_LINK_COUNT,
+            max_depth: MaxDepth(None),
+            unsafe_allow_html: false,
+            force_gzip: false,
+            poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
+            metrics: None,
+            server_address: String::from("127.0.0.1:9999"),
+        }
+    }
 }
 
 #[cfg(test)]
