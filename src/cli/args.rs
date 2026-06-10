@@ -28,7 +28,7 @@ pub struct AppArgs {
 
     /// Bind to the specified Unix socket rather than a TCP address
     #[cfg(unix)]
-    #[arg(long, default_value = None)]
+    #[arg(long)]
     #[arg(help_heading = "Server Options")]
     pub unix_socket: Option<String>,
 
@@ -62,6 +62,10 @@ pub struct AppArgs {
 
     #[command(flatten)]
     pub metrics: Option<MetricsConfig>,
+
+    /// File to load configuration options from
+    #[arg(long)]
+    pub config_file: Option<String>,
 }
 
 impl AppArgs {
@@ -97,7 +101,7 @@ impl AppArgs {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct MaxDepth(pub Option<u32>);
 
 impl Display for MaxDepth {
@@ -124,7 +128,7 @@ impl FromStr for MaxDepth {
 }
 
 /// If this value is Some, all sub-fields will also be Some
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, Deserialize)]
 #[allow(clippy::struct_field_names)]
 pub struct MetricsConfig {
     #[allow(clippy::doc_markdown)]
@@ -148,7 +152,7 @@ pub struct MetricsConfig {
     pub metrics_endpoint: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct MetricsCredentials {
     username: String,
     password: String,
@@ -180,9 +184,27 @@ impl FromStr for MetricsCredentials {
     }
 }
 
+macro_rules! struct_mapper {
+    ($to:ident => $from:ident, $field:ident) => {
+        $to.$field = $from.$field;
+    };
+    ($to:ident => $from: ident, $field:ident, $($fields:ident),+) => {
+        struct_mapper!($to => $from, $field);
+        struct_mapper!($to => $from, $($fields),+)
+    };
+}
+
 impl AppArgs {
     pub fn parse_args() -> Self {
-        <AppArgs as Parser>::parse()
+        let mut args = <AppArgs as Parser>::parse();
+        if let Some(file) = &args.config_file {
+            let conf = std::fs::read_to_string(file).unwrap();
+            let conf = serde_json::from_str::<ConfigFile>(&conf).expect("Parsing the config failed");
+            // Maps the common fields between structs
+            struct_mapper!(args => conf, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth);
+            args.poison_source = Url::parse(&conf.poison_source).expect("Everything should have a default value");
+        }
+        args
     }
 
     /// Print configuration information to stderr.
@@ -252,6 +274,38 @@ impl AppArgs {
     }
 }
 
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct ConfigFile {
+    max_in_flight: u32,
+    link_prefix: String,
+    link_count: u8,
+    max_depth: MaxDepth,
+    force_gzip: bool,
+    unsafe_allow_html: bool,
+    poison_source: String,
+    server: ServerTypes,
+    metrics: Option<MetricsConfig>,
+}
+
+#[derive(Deserialize)]
+enum ServerTypes {
+    Tcp(TcpSettings),
+    #[cfg(unix)]
+    Unix(UnixSettings),
+}
+#[derive(Deserialize)]
+struct TcpSettings {
+    port: u16,
+    host: String,
+}
+#[cfg(unix)]
+#[derive(Deserialize)]
+struct UnixSettings {
+    path: String,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -282,6 +336,8 @@ mod test {
                 }),
                 metrics_endpoint: "/serve-metrics".to_owned(),
             }),
+
+            config_file: None,
         };
 
         let config = args.to_miasma_config();
@@ -318,6 +374,7 @@ mod test {
             metrics: None,
             max_depth: MaxDepth(None),
             poison_source: Url::parse("https://example.com").unwrap(),
+            config_file: None,
         };
 
         assert_eq!(config.address(), "127.0.0.1:8080");

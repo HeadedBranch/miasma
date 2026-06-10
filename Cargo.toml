@@ -24,6 +24,7 @@ fhtml = "0.6.1"
 futures = "0.3.32"
 rand = "0.10.0"
 serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
 thiserror = "2.0.18"
 tokio = { version = "1.50.0", features = ["rt-multi-thread", "signal"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
