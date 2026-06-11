@@ -8,8 +8,8 @@ use crate::cli;
 use clap::{Args, Parser};
 use colored::Colorize;
 use miasma::MiasmaConfig;
-use url::Url;
 use serde::Deserialize;
+use url::Url;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
@@ -84,16 +84,24 @@ impl AppArgs {
         let mut args = <AppArgs as Parser>::parse();
         if let Some(file) = &args.config_file {
             let conf = std::fs::read_to_string(file).unwrap();
-            let conf = serde_json::from_str::<ConfigFile>(&conf).expect("Parsing the config failed");
+            let conf =
+                serde_json::from_str::<ConfigFile>(&conf).expect("Parsing the config failed");
             // Maps the common fields between structs
             struct_mapper!(args => conf, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
-            args.poison_source = Url::parse(&conf.poison_source).expect("Everything should have a default value");
+            args.poison_source =
+                Url::parse(&conf.poison_source).expect("Everything should have a default value");
             if conf.listen.starts_with("unix:") {
-                args.unix_socket = Some(conf.listen.get(5..).expect("File not specified").to_string());
+                args.unix_socket = Some(
+                    conf.listen
+                        .get(5..)
+                        .expect("File not specified")
+                        .to_string(),
+                );
             } else {
                 let mut addr = conf.listen.split(':');
                 args.host = addr.next().expect("Invalid Configuration").to_string();
-                args.port = u16::from_str(addr.next().expect("No Port specified")).expect("Invalid port");
+                args.port =
+                    u16::from_str(addr.next().expect("No Port specified")).expect("Invalid port");
             }
         }
         args
