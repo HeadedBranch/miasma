@@ -1,7 +1,7 @@
 [package]
 name = "miasma"
 description = "Trap malicious AI web scrapers in an endless pit of poisoned training data."
-keywords = ["ai", "anti-ai", "web-scraping", "security", "cli", "server"]
+keywords = ["ai", "anti-ai", "web-scraping", "cli", "server"]
 categories = ["artificial-intelligence", "command-line-utilities", "development-tools", "security"]
 version = "0.2.9"
 edition = "2024"
