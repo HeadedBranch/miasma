@@ -9,6 +9,7 @@ use clap::{Args, Parser};
 use colored::Colorize;
 use miasma::MiasmaConfig;
 use url::Url;
+use serde::Deserialize;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
@@ -68,122 +69,6 @@ pub struct AppArgs {
     pub config_file: Option<String>,
 }
 
-impl AppArgs {
-    pub fn to_miasma_config(&self) -> MiasmaConfig {
-        let mut builder = MiasmaConfig::builder();
-        builder
-            .max_in_flight(self.max_in_flight)
-            .link_count(self.link_count)
-            .link_prefix(&self.link_prefix)
-            .force_gzip(self.force_gzip)
-            .unsafe_allow_html(self.unsafe_allow_html)
-            .poison_source(self.poison_source.clone());
-
-        if let Some(d) = self.max_depth.0 {
-            builder.max_depth(d);
-        }
-        if let Some(m) = &self.metrics {
-            let credentials = m
-                .metrics_credentials
-                .as_ref()
-                .expect("credentials should be Some if MetricsConfig is Some");
-            builder.metrics(
-                m.metrics_db_path
-                    .as_ref()
-                    .expect("db path should be Some if MetricsConfig is Some"),
-                &m.metrics_endpoint,
-                &credentials.username,
-                &credentials.password,
-            );
-        }
-
-        builder.build()
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct MaxDepth(pub Option<u32>);
-
-impl Display for MaxDepth {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.0 {
-            Some(v) => f.write_str(&v.to_string()),
-            None => f.write_str("none"),
-        }
-    }
-}
-
-impl FromStr for MaxDepth {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("none") {
-            return Ok(Self(None));
-        }
-        match s.parse::<u32>() {
-            Ok(v) => Ok(Self(Some(v))),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-/// If this value is Some, all sub-fields will also be Some
-#[derive(Args, Debug, Clone, Deserialize)]
-#[allow(clippy::struct_field_names)]
-pub struct MetricsConfig {
-    #[allow(clippy::doc_markdown)]
-    /// Path to SQLite database file (e.g. 'miasma.db')
-    #[arg(long, requires = "metrics_credentials")]
-    #[arg(help_heading = "Metrics Options")]
-    pub metrics_db_path: Option<String>,
-
-    /// Basic auth credentials required to access request metrics -
-    /// must match format '<username>:<password>'
-    #[arg(long, requires = "metrics_db_path")]
-    #[arg(help_heading = "Metrics Options")]
-    pub metrics_credentials: Option<MetricsCredentials>,
-
-    /// Endpoint at which request metrics will be served
-    #[arg(
-        long, default_value = "/metrics",
-        requires_all = ["metrics_db_path", "metrics_credentials"],
-    )]
-    #[arg(help_heading = "Metrics Options")]
-    pub metrics_endpoint: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct MetricsCredentials {
-    username: String,
-    password: String,
-}
-
-impl Display for MetricsCredentials {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}:******", self.username))
-    }
-}
-
-impl FromStr for MetricsCredentials {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some((username, password)) = s.split_once(':') else {
-            return Err("credentials must match format '<username>:<password>'");
-        };
-        if username.is_empty() {
-            return Err("username must not be empty");
-        }
-        if password.is_empty() {
-            return Err("password must not be empty");
-        }
-        Ok(Self {
-            username: username.to_owned(),
-            password: password.to_owned(),
-        })
-    }
-}
-
 macro_rules! struct_mapper {
     ($to:ident => $from:ident, $field:ident) => {
         $to.$field = $from.$field;
@@ -203,10 +88,10 @@ impl AppArgs {
             // Maps the common fields between structs
             struct_mapper!(args => conf, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
             args.poison_source = Url::parse(&conf.poison_source).expect("Everything should have a default value");
-            if conf.server_address.starts_with("unix:") {
-                args.unix_socket = Some(conf.server_address.get(5..).expect("File not specified").to_string());
+            if conf.listen.starts_with("unix:") {
+                args.unix_socket = Some(conf.listen.get(5..).expect("File not specified").to_string());
             } else {
-                let mut addr = conf.server_address.split(":");
+                let mut addr = conf.listen.split(":");
                 args.host = addr.next().unwrap().to_string();
                 args.port = u16::from_str(addr.next().unwrap()).expect("Invalid port");
             }
@@ -279,9 +164,145 @@ impl AppArgs {
     pub fn address(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
+
+    pub fn to_miasma_config(&self) -> MiasmaConfig {
+        let mut builder = MiasmaConfig::builder();
+        builder
+            .max_in_flight(self.max_in_flight)
+            .link_count(self.link_count)
+            .link_prefix(&self.link_prefix)
+            .force_gzip(self.force_gzip)
+            .unsafe_allow_html(self.unsafe_allow_html)
+            .poison_source(self.poison_source.clone());
+
+        if let Some(d) = self.max_depth.0 {
+            builder.max_depth(d);
+        }
+        if let Some(m) = &self.metrics {
+            let credentials = m
+                .metrics_credentials
+                .as_ref()
+                .expect("credentials should be Some if MetricsConfig is Some");
+            builder.metrics(
+                m.metrics_db_path
+                    .as_ref()
+                    .expect("db path should be Some if MetricsConfig is Some"),
+                &m.metrics_endpoint,
+                &credentials.username,
+                &credentials.password,
+            );
+        }
+
+        builder.build()
+    }
 }
 
-use serde::Deserialize;
+#[derive(Debug, Clone, Deserialize)]
+pub struct MaxDepth(pub Option<u32>);
+
+impl Display for MaxDepth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Some(v) => f.write_str(&v.to_string()),
+            None => f.write_str("none"),
+        }
+    }
+}
+
+impl FromStr for MaxDepth {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq_ignore_ascii_case("none") {
+            return Ok(Self(None));
+        }
+        match s.parse::<u32>() {
+            Ok(v) => Ok(Self(Some(v))),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+/// If this value is Some, all sub-fields will also be Some
+#[derive(Args, Debug, Clone, Deserialize)]
+#[allow(clippy::struct_field_names)]
+pub struct MetricsConfig {
+    #[allow(clippy::doc_markdown)]
+    /// Path to SQLite database file (e.g. 'miasma.db')
+    #[arg(long, requires = "metrics_credentials")]
+    #[arg(help_heading = "Metrics Options")]
+    #[serde(rename = "db_path")]
+    pub metrics_db_path: Option<String>,
+
+    /// Basic auth credentials required to access request metrics -
+    /// must match format '<username>:<password>'
+    #[arg(long, requires = "metrics_db_path")]
+    #[arg(help_heading = "Metrics Options")]
+    #[serde(rename = "credentials")]
+    pub metrics_credentials: Option<MetricsCredentials>,
+
+    /// Endpoint at which request metrics will be served
+    #[arg(
+        long, default_value = "/metrics",
+        requires_all = ["metrics_db_path", "metrics_credentials"],
+    )]
+    #[arg(help_heading = "Metrics Options")]
+    #[serde(rename = "endpoint")]
+    pub metrics_endpoint: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(try_from = "String")]
+pub struct MetricsCredentials {
+    username: String,
+    password: String,
+}
+
+impl Display for MetricsCredentials {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}:******", self.username))
+    }
+}
+
+impl FromStr for MetricsCredentials {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some((username, password)) = s.split_once(':') else {
+            return Err("credentials must match format '<username>:<password>'");
+        };
+        if username.is_empty() {
+            return Err("username must not be empty");
+        }
+        if password.is_empty() {
+            return Err("password must not be empty");
+        }
+        Ok(Self {
+            username: username.to_owned(),
+            password: password.to_owned(),
+        })
+    }
+}
+
+impl TryFrom<String> for MetricsCredentials {
+    type Error = &'static str;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        let Some((username, password)) = s.split_once(':') else {
+            return Err("credentials must match format '<username>:<password>'");
+        };
+        if username.is_empty() {
+            return Err("username must not be empty");
+        }
+        if password.is_empty() {
+            return Err("password must not be empty");
+        }
+        Ok(Self {
+            username: username.to_owned(),
+            password: password.to_owned(),
+        })
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(default)]
@@ -293,7 +314,7 @@ struct ConfigFile {
     force_gzip: bool,
     unsafe_allow_html: bool,
     poison_source: String,
-    server_address: String,
+    listen: String,
     metrics: Option<MetricsConfig>,
 }
 
@@ -308,7 +329,7 @@ impl Default for ConfigFile {
             force_gzip: false,
             poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
             metrics: None,
-            server_address: String::from("127.0.0.1:9999"),
+            listen: String::from("127.0.0.1:9999"),
         }
     }
 }
