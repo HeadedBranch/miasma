@@ -8,7 +8,7 @@ edition = "2024"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/austin-weeks/miasma"
 readme = "README.md"
-exclude = [".github", "nix", "flake.lock", "flake.nix", "Dockerfile", "CONTRIBUTING.md", "Justfile"]
+include = ["README.md", "LICENSE", "src", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
 async-compression = { version = "0.4.41", features = ["gzip"] }

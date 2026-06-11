@@ -3,8 +3,14 @@ FROM rust:bookworm AS builder
 WORKDIR /build
 
 COPY Cargo.toml Cargo.lock .
-COPY src/ src/
 
+# Build just dependencies so they can be cached between image builds
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+RUN rm -rf src
+
+# Build actual miasma binary
+COPY src/ src/
 RUN cargo build --release
 
 # --- RUNTIME ---
