@@ -91,9 +91,9 @@ impl AppArgs {
             if conf.listen.starts_with("unix:") {
                 args.unix_socket = Some(conf.listen.get(5..).expect("File not specified").to_string());
             } else {
-                let mut addr = conf.listen.split(":");
-                args.host = addr.next().unwrap().to_string();
-                args.port = u16::from_str(addr.next().unwrap()).expect("Invalid port");
+                let mut addr = conf.listen.split(':');
+                args.host = addr.next().expect("Invalid Configuration").to_string();
+                args.port = u16::from_str(addr.next().expect("No Port specified")).expect("Invalid port");
             }
         }
         args
@@ -252,7 +252,7 @@ pub struct MetricsConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(try_from = "String")]
+#[serde(try_from = "&str")]
 pub struct MetricsCredentials {
     username: String,
     password: String,
@@ -284,23 +284,11 @@ impl FromStr for MetricsCredentials {
     }
 }
 
-impl TryFrom<String> for MetricsCredentials {
+impl TryFrom<&str> for MetricsCredentials {
     type Error = &'static str;
 
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        let Some((username, password)) = s.split_once(':') else {
-            return Err("credentials must match format '<username>:<password>'");
-        };
-        if username.is_empty() {
-            return Err("username must not be empty");
-        }
-        if password.is_empty() {
-            return Err("password must not be empty");
-        }
-        Ok(Self {
-            username: username.to_owned(),
-            password: password.to_owned(),
-        })
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Self::from_str(s)
     }
 }
 
