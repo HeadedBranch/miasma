@@ -91,12 +91,19 @@ impl AppArgs {
             args.poison_source =
                 Url::parse(&conf.poison_source).expect("Everything should have a default value");
             if conf.listen.starts_with("unix:") {
-                args.unix_socket = Some(
-                    conf.listen
-                        .get(5..)
-                        .expect("File not specified")
-                        .to_string(),
-                );
+                #[cfg(unix)]
+                {
+                    args.unix_socket = Some(
+                        conf.listen
+                            .get(5..)
+                            .expect("File not specified")
+                            .to_string(),
+                    );
+                }
+                #[cfg(unix)]
+                {
+                    eprintln!("Cannot use unix sockets on non-unix host");
+                }
             } else {
                 let mut addr = conf.listen.split(':');
                 args.host = addr.next().expect("Invalid Configuration").to_string();
