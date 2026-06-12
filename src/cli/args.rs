@@ -70,12 +70,12 @@ pub struct AppArgs {
 }
 
 macro_rules! struct_mapper {
-    ($to:ident => $from:ident, $field:ident) => {
+    ($from:ident => $to:ident, $field:ident) => {
         $to.$field = $from.$field;
     };
-    ($to:ident => $from: ident, $field:ident, $($fields:ident),+) => {
-        struct_mapper!($to => $from, $field);
-        struct_mapper!($to => $from, $($fields),+)
+    ($from:ident => $to: ident, $field:ident, $($fields:ident),+) => {
+        struct_mapper!($from => $to, $field);
+        struct_mapper!($from => $to, $($fields),+)
     };
 }
 
@@ -87,7 +87,7 @@ impl AppArgs {
             let conf =
                 serde_json::from_str::<ConfigFile>(&conf).expect("Parsing the config failed");
             // Maps the common fields between structs
-            struct_mapper!(args => conf, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
+            struct_mapper!(conf => args, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
             args.poison_source =
                 Url::parse(&conf.poison_source).expect("Everything should have a default value");
             if conf.listen.starts_with("unix:") {
