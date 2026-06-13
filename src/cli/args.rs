@@ -91,7 +91,12 @@ pub enum ParseError {
 impl AppArgs {
     pub fn parse_args() -> Self {
         let mut args = <AppArgs as Parser>::parse();
-        if let Some(file) = &args.config_file {
+        args.load_from_file();
+        args
+    }
+
+    pub fn load_from_file(&mut self) {
+        if let Some(file) = &self.config_file {
             let conf = match std::fs::read_to_string(file) {
                 Ok(c) => c,
                 Err(e) => {
@@ -114,24 +119,23 @@ impl AppArgs {
                 }
             };
             // Maps the common fields between structs
-            struct_mapper!(conf => args, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
-            args.poison_source =
+            struct_mapper!(conf => self, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
+            self.poison_source =
                 Url::parse(&conf.poison_source).expect("Default value should work");
             match conf.server {
                 ServerConf::Unix { unix_socket } => {
                     #[cfg(unix)]
                     {
-                        args.unix_socket = Some(unix_socket);
+                        self.unix_socket = Some(unix_socket);
                     }
                     #[cfg(not(unix))]
                     {
                         eprintln!("Cannot use unix sockets on non-unix host");
                     }
                 },
-                ServerConf::Tcp { host, port } => { args.host = host; args.port = port },
+                ServerConf::Tcp { host, port } => { self.host = host; self.port = port },
             }
         }
-        args
     }
 
     /// Print configuration information to stderr.
