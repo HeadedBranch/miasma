@@ -79,36 +79,56 @@ macro_rules! struct_mapper {
     };
 }
 
+use thiserror::Error;
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error(transparent)]
+    Yaml(serde_yaml::Error),
+    #[error(transparent)]
+    Json(serde_json::Error),
+}
+
 impl AppArgs {
     pub fn parse_args() -> Self {
         let mut args = <AppArgs as Parser>::parse();
         if let Some(file) = &args.config_file {
-            let conf = std::fs::read_to_string(file).unwrap();
-            let conf =
-                serde_json::from_str::<ConfigFile>(&conf).expect("Parsing the config failed");
+            let conf = match std::fs::read_to_string(file) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("Cannot read the provided config file: {e}");
+                    std::process::exit(2);
+                }
+            };
+            let conf = match if file.ends_with(".json") {
+                serde_json::from_str::<ConfigFile>(&conf).map_err(ParseError::Json)
+            } else if file.ends_with(".yaml") {
+                serde_yaml::from_str::<ConfigFile>(&conf).map_err(ParseError::Yaml)
+            } else {
+                eprintln!("Config language is not currently supported");
+                std::process::exit(2);
+            } {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("Cannot parse the config: {e}");
+                    std::process::exit(2);
+                }
+            };
             // Maps the common fields between structs
             struct_mapper!(conf => args, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
             args.poison_source =
-                Url::parse(&conf.poison_source).expect("Everything should have a default value");
-            if conf.listen.starts_with("unix:") {
-                #[cfg(unix)]
-                {
-                    args.unix_socket = Some(
-                        conf.listen
-                            .get(5..)
-                            .expect("File not specified")
-                            .to_string(),
-                    );
-                }
-                #[cfg(unix)]
-                {
-                    eprintln!("Cannot use unix sockets on non-unix host");
-                }
-            } else {
-                let mut addr = conf.listen.split(':');
-                args.host = addr.next().expect("Invalid Configuration").to_string();
-                args.port =
-                    u16::from_str(addr.next().expect("No Port specified")).expect("Invalid port");
+                Url::parse(&conf.poison_source).expect("Default value should work");
+            match conf.server {
+                ServerConf::Unix { unix_socket } => {
+                    #[cfg(unix)]
+                    {
+                        args.unix_socket = Some(unix_socket);
+                    }
+                    #[cfg(not(unix))]
+                    {
+                        eprintln!("Cannot use unix sockets on non-unix host");
+                    }
+                },
+                ServerConf::Tcp { host, port } => { args.host = host; args.port = port },
             }
         }
         args
@@ -262,8 +282,12 @@ pub struct MetricsConfig {
         requires_all = ["metrics_db_path", "metrics_credentials"],
     )]
     #[arg(help_heading = "Metrics Options")]
-    #[serde(rename = "endpoint")]
+    #[serde(rename = "endpoint", default = "default_endpoint")]
     pub metrics_endpoint: String,
+}
+
+fn default_endpoint() -> String {
+    String::from("/metrics")
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -317,7 +341,7 @@ struct ConfigFile {
     force_gzip: bool,
     unsafe_allow_html: bool,
     poison_source: String,
-    listen: String,
+    server: ServerConf,
     metrics: Option<MetricsConfig>,
 }
 
@@ -332,9 +356,16 @@ impl Default for ConfigFile {
             force_gzip: false,
             poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
             metrics: None,
-            listen: String::from("127.0.0.1:9999"),
+            server: ServerConf::Tcp { host: String::from("127.0.0.1"), port: 9999 },
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ServerConf {
+    Tcp { host: String, port: u16 },
+    Unix { unix_socket: String },
 }
 
 #[cfg(test)]
