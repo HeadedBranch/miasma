@@ -132,8 +132,11 @@ impl AppArgs {
                     {
                         eprintln!("Cannot use unix sockets on non-unix host");
                     }
-                },
-                ServerConf::Tcp { host, port } => { self.host = host; self.port = port },
+                }
+                ServerConf::Tcp { host, port } => {
+                    self.host = host;
+                    self.port = port;
+                }
             }
         }
     }
@@ -360,7 +363,10 @@ impl Default for ConfigFile {
             force_gzip: false,
             poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
             metrics: None,
-            server: ServerConf::Tcp { host: String::from("127.0.0.1"), port: 9999 },
+            server: ServerConf::Tcp {
+                host: String::from("127.0.0.1"),
+                port: 9999,
+            },
         }
     }
 }
