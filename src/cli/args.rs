@@ -69,16 +69,6 @@ pub struct AppArgs {
     pub config_file: Option<String>,
 }
 
-macro_rules! struct_mapper {
-    ($from:ident => $to:ident, $field:ident) => {
-        $to.$field = $from.$field;
-    };
-    ($from:ident => $to: ident, $field:ident, $($fields:ident),+) => {
-        struct_mapper!($from => $to, $field);
-        struct_mapper!($from => $to, $($fields),+)
-    };
-}
-
 use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -90,54 +80,61 @@ pub enum ParseError {
 
 impl AppArgs {
     pub fn parse_args() -> Self {
-        let mut args = <AppArgs as Parser>::parse();
-        args.load_from_file();
+        let args = <AppArgs as Parser>::parse();
+        if args.config_file.is_some() {
+            return args.load_from_file();
+        }
         args
     }
 
-    pub fn load_from_file(&mut self) {
-        if let Some(file) = &self.config_file {
-            let conf = match std::fs::read_to_string(file) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("Cannot read the provided config file: {e}");
-                    std::process::exit(2);
-                }
-            };
-            let conf = match if file.ends_with(".json") {
-                serde_json::from_str::<ConfigFile>(&conf).map_err(ParseError::Json)
-            } else if file.ends_with(".yaml") {
-                serde_yaml::from_str::<ConfigFile>(&conf).map_err(ParseError::Yaml)
-            } else {
-                eprintln!("Config language is not currently supported");
+    pub fn load_from_file(&self) -> Self {
+        let file = self.config_file.as_ref().expect("Should be set");
+        let conf = match std::fs::read_to_string(file) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Cannot read the provided config file: {e}");
                 std::process::exit(2);
-            } {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("Cannot parse the config: {e}");
-                    std::process::exit(2);
-                }
-            };
-            // Maps the common fields between structs
-            struct_mapper!(conf => self, max_in_flight, link_prefix, link_count, force_gzip, unsafe_allow_html, max_depth, metrics);
-            self.poison_source =
-                Url::parse(&conf.poison_source).expect("Default value should work");
-            match conf.server {
-                ServerConf::Unix { unix_socket } => {
-                    #[cfg(unix)]
-                    {
-                        self.unix_socket = Some(unix_socket);
-                    }
-                    #[cfg(not(unix))]
-                    {
-                        eprintln!("Cannot use unix sockets on non-unix host");
-                    }
-                }
-                ServerConf::Tcp { host, port } => {
-                    self.host = host;
-                    self.port = port;
-                }
             }
+        };
+        let conf = match if file.ends_with(".json") {
+            serde_json::from_str::<ConfigFile>(&conf).map_err(ParseError::Json)
+        } else if file.ends_with(".yaml") {
+            serde_yaml::from_str::<ConfigFile>(&conf).map_err(ParseError::Yaml)
+        } else {
+            eprintln!("Config language is not currently supported");
+            std::process::exit(2);
+        } {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Cannot parse the config: {e}");
+                std::process::exit(2);
+            }
+        };
+        let mut unix_socket = None;
+        if let Some(sock) = conf.server.unix_socket {
+            #[cfg(unix)]
+            {
+                unix_socket = Some(sock);
+            }
+            #[cfg(not(unix))]
+            {
+                eprintln!("Cannot use unix sockets on non-unix host");
+            }
+        }
+        AppArgs {
+            max_in_flight: conf.max_in_flight,
+            link_prefix: conf.link_prefix,
+            link_count: conf.link_count,
+            force_gzip: conf.force_gzip,
+            unsafe_allow_html: conf.unsafe_allow_html,
+            max_depth: conf.max_depth,
+            metrics: conf.metrics,
+            poison_source: Url::parse(&conf.poison_source).expect("Default value should exist"),
+            #[cfg(unix)]
+            unix_socket,
+            host: conf.server.host,
+            port: conf.server.port,
+            config_file: None,
         }
     }
 
@@ -363,19 +360,20 @@ impl Default for ConfigFile {
             force_gzip: false,
             poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
             metrics: None,
-            server: ServerConf::Tcp {
+            server: ServerConf {
                 host: String::from("127.0.0.1"),
                 port: 9999,
+                unix_socket: None,
             },
         }
     }
 }
 
 #[derive(Deserialize)]
-#[serde(untagged)]
-enum ServerConf {
-    Tcp { host: String, port: u16 },
-    Unix { unix_socket: String },
+struct ServerConf {
+    host: String,
+    port: u16,
+    unix_socket: Option<String>,
 }
 
 #[cfg(test)]
