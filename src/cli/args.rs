@@ -110,16 +110,9 @@ impl AppArgs {
                 std::process::exit(2);
             }
         };
-        let mut unix_socket = None;
-        if let Some(sock) = conf.server.unix_socket {
-            #[cfg(unix)]
-            {
-                unix_socket = Some(sock);
-            }
-            #[cfg(not(unix))]
-            {
-                eprintln!("Cannot use unix sockets on non-unix host");
-            }
+        #[cfg(not(unix))]
+        if conf.server.unix_socket.is_some() {
+            eprintln!("Cannot use unix sockets on non-unix host, ignoring");
         }
         AppArgs {
             max_in_flight: conf.max_in_flight,
@@ -131,7 +124,7 @@ impl AppArgs {
             metrics: conf.metrics,
             poison_source: Url::parse(&conf.poison_source).expect("Default value should exist"),
             #[cfg(unix)]
-            unix_socket,
+            unix_socket: conf.server.unix_socket,
             host: conf.server.host,
             port: conf.server.port,
             config_file: None,
