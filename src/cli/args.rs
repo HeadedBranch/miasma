@@ -376,8 +376,8 @@ mod test {
     use super::*;
     use base64::prelude::*;
 
-    use tempfile::Builder;
     use std::io::Write;
+    use tempfile::Builder;
 
     #[test]
     fn to_miasma_config() {
@@ -468,9 +468,9 @@ mod test {
             }
         }
     }
-    
+
     #[test]
-    fn load_json() -> Result<(), std::io::Error>{
+    fn load_json() -> Result<(), std::io::Error> {
         let text = "{
           \"max_in_flight\": 8,
           \"link_prefix\": \"test\",
@@ -489,9 +489,7 @@ mod test {
             \"endpoint\": \"/serve-metrics\"
           }
         }";
-        let mut file = Builder::new()
-            .suffix(".json")
-            .tempfile()?;
+        let mut file = Builder::new().suffix(".json").tempfile()?;
         write!(file, "{text}")?;
         let config = AppArgs {
             #[cfg(unix)]
@@ -509,12 +507,15 @@ mod test {
             config_file: Some(format!("{}", file.path().display())),
         };
         let config = config.load_from_file();
-        
+
         assert_eq!(config.max_in_flight, 8);
         assert_eq!(config.link_prefix, "test");
         assert_eq!(config.link_count, 8);
         assert_eq!(config.max_depth, MaxDepth(Some(8)));
-        assert_eq!(config.poison_source, Url::parse("https://example.com/").unwrap());
+        assert_eq!(
+            config.poison_source,
+            Url::parse("https://example.com/").unwrap()
+        );
         assert!(config.force_gzip);
         assert!(config.unsafe_allow_html);
 
@@ -523,13 +524,16 @@ mod test {
         assert_eq!(metrics.metrics_endpoint, "/serve-metrics".to_owned());
         assert_eq!(
             metrics.metrics_credentials,
-            Some(MetricsCredentials { username: "admin".to_owned(), password: "admin".to_owned() })
+            Some(MetricsCredentials {
+                username: "admin".to_owned(),
+                password: "admin".to_owned()
+            })
         );
         Ok(())
     }
 
     #[test]
-    fn load_yaml() -> Result<(), std::io::Error>{
+    fn load_yaml() -> Result<(), std::io::Error> {
         let text = "max_in_flight: 8
 link_prefix: test
 link_count: 8
@@ -544,9 +548,7 @@ metrics:
   db_path: miasma.db
   credentials: admin:admin
   endpoint: /serve-metrics";
-        let mut file = Builder::new()
-            .suffix(".yaml")
-            .tempfile()?;
+        let mut file = Builder::new().suffix(".yaml").tempfile()?;
         write!(file, "{text}")?;
         let config = AppArgs {
             #[cfg(unix)]
@@ -564,12 +566,15 @@ metrics:
             config_file: Some(format!("{}", file.path().display())),
         };
         let config = config.load_from_file();
-        
+
         assert_eq!(config.max_in_flight, 8);
         assert_eq!(config.link_prefix, "test");
         assert_eq!(config.link_count, 8);
         assert_eq!(config.max_depth, MaxDepth(Some(8)));
-        assert_eq!(config.poison_source, Url::parse("https://example.com/").unwrap());
+        assert_eq!(
+            config.poison_source,
+            Url::parse("https://example.com/").unwrap()
+        );
         assert!(config.force_gzip);
         assert!(config.unsafe_allow_html);
 
@@ -578,7 +583,10 @@ metrics:
         assert_eq!(metrics.metrics_endpoint, "/serve-metrics".to_owned());
         assert_eq!(
             metrics.metrics_credentials,
-            Some(MetricsCredentials { username: "admin".to_owned(), password: "admin".to_owned() })
+            Some(MetricsCredentials {
+                username: "admin".to_owned(),
+                password: "admin".to_owned()
+            })
         );
         Ok(())
     }
