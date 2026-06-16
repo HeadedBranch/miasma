@@ -96,6 +96,8 @@ impl AppArgs {
                 std::process::exit(2);
             }
         };
+        let file = file.to_lowercase();
+        #[allow(clippy::case_sensitive_file_extension_comparisons)]
         let conf = match if file.ends_with(".json") {
             serde_json::from_str::<ConfigFile>(&conf).map_err(ParseError::Json)
         } else if file.ends_with(".yaml") {
@@ -229,7 +231,7 @@ impl AppArgs {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct MaxDepth(pub Option<u32>);
 
 impl Display for MaxDepth {
@@ -287,7 +289,7 @@ fn default_endpoint() -> String {
     String::from("/metrics")
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(try_from = "&str")]
 pub struct MetricsCredentials {
     username: String,
@@ -373,6 +375,9 @@ struct ServerConf {
 mod test {
     use super::*;
     use base64::prelude::*;
+
+    use tempfile::Builder;
+    use std::io::Write;
 
     #[test]
     fn to_miasma_config() {
@@ -462,5 +467,119 @@ mod test {
                 }
             }
         }
+    }
+    
+    #[test]
+    fn load_json() -> Result<(), std::io::Error>{
+        let text = "{
+          \"max_in_flight\": 8,
+          \"link_prefix\": \"test\",
+          \"link_count\": 8,
+          \"max_depth\": 8,
+          \"force_gzip\": true,
+          \"unsafe_allow_html\": true,
+          \"poison_source\": \"https://example.com/\",
+          \"server\": {
+            \"port\": 8080,
+            \"host\": \"127.0.0.1\"
+          },
+          \"metrics\": {
+            \"db_path\": \"miasma.db\",
+            \"credentials\": \"admin:admin\",
+            \"endpoint\": \"/serve-metrics\"
+          }
+        }";
+        let mut file = Builder::new()
+            .suffix(".json")
+            .tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs {
+            #[cfg(unix)]
+            unix_socket: None,
+            port: 9999,
+            host: String::new(),
+            max_in_flight: Default::default(),
+            link_prefix: String::default(),
+            link_count: Default::default(),
+            force_gzip: Default::default(),
+            unsafe_allow_html: Default::default(),
+            metrics: None,
+            max_depth: MaxDepth(None),
+            poison_source: Url::parse("https://example.com").unwrap(),
+            config_file: Some(format!("{}", file.path().display())),
+        };
+        let config = config.load_from_file();
+        
+        assert_eq!(config.max_in_flight, 8);
+        assert_eq!(config.link_prefix, "test");
+        assert_eq!(config.link_count, 8);
+        assert_eq!(config.max_depth, MaxDepth(Some(8)));
+        assert_eq!(config.poison_source, Url::parse("https://example.com/").unwrap());
+        assert!(config.force_gzip);
+        assert!(config.unsafe_allow_html);
+
+        let metrics = config.metrics.unwrap();
+        assert_eq!(metrics.metrics_db_path, Some("miasma.db".to_owned()));
+        assert_eq!(metrics.metrics_endpoint, "/serve-metrics".to_owned());
+        assert_eq!(
+            metrics.metrics_credentials,
+            Some(MetricsCredentials { username: "admin".to_owned(), password: "admin".to_owned() })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn load_yaml() -> Result<(), std::io::Error>{
+        let text = "max_in_flight: 8
+link_prefix: test
+link_count: 8
+max_depth: 8
+force_gzip: true
+unsafe_allow_html: true
+poison_source: https://example.com/
+server:
+  port: 8080
+  host: 127.0.0.1
+metrics:
+  db_path: miasma.db
+  credentials: admin:admin
+  endpoint: /serve-metrics";
+        let mut file = Builder::new()
+            .suffix(".yaml")
+            .tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs {
+            #[cfg(unix)]
+            unix_socket: None,
+            port: 9999,
+            host: String::new(),
+            max_in_flight: Default::default(),
+            link_prefix: String::default(),
+            link_count: Default::default(),
+            force_gzip: Default::default(),
+            unsafe_allow_html: Default::default(),
+            metrics: None,
+            max_depth: MaxDepth(None),
+            poison_source: Url::parse("https://example.com").unwrap(),
+            config_file: Some(format!("{}", file.path().display())),
+        };
+        let config = config.load_from_file();
+        
+        assert_eq!(config.max_in_flight, 8);
+        assert_eq!(config.link_prefix, "test");
+        assert_eq!(config.link_count, 8);
+        assert_eq!(config.max_depth, MaxDepth(Some(8)));
+        assert_eq!(config.poison_source, Url::parse("https://example.com/").unwrap());
+        assert!(config.force_gzip);
+        assert!(config.unsafe_allow_html);
+
+        let metrics = config.metrics.unwrap();
+        assert_eq!(metrics.metrics_db_path, Some("miasma.db".to_owned()));
+        assert_eq!(metrics.metrics_endpoint, "/serve-metrics".to_owned());
+        assert_eq!(
+            metrics.metrics_credentials,
+            Some(MetricsCredentials { username: "admin".to_owned(), password: "admin".to_owned() })
+        );
+        Ok(())
     }
 }
