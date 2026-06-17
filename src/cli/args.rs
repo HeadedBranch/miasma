@@ -8,7 +8,11 @@ use crate::cli;
 use clap::{Args, Parser};
 use colored::Colorize;
 use miasma::MiasmaConfig;
+use serde::Deserialize;
 use url::Url;
+
+const DEFAULT_HOST: &str = "localhost";
+const DEFAULT_PORT: u16 = 9999;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
@@ -17,18 +21,18 @@ use url::Url;
 )]
 pub struct AppArgs {
     /// Port to listen for requests
-    #[arg(short = 'p', long, default_value_t = 9999)]
+    #[arg(short = 'p', long, default_value_t = DEFAULT_PORT)]
     #[arg(help_heading = "Server Options")]
     pub port: u16,
 
     /// Host to listen for requests
-    #[arg(long, env = "MIASMA_HOST", default_value_t = String::from("localhost") )]
+    #[arg(long, env = "MIASMA_HOST", default_value_t = DEFAULT_HOST.to_string() )]
     #[arg(help_heading = "Server Options")]
     pub host: String,
 
     /// Bind to the specified Unix socket rather than a TCP address
     #[cfg(unix)]
-    #[arg(long, default_value = None)]
+    #[arg(long)]
     #[arg(help_heading = "Server Options")]
     pub unix_socket: Option<String>,
 
@@ -62,127 +66,74 @@ pub struct AppArgs {
 
     #[command(flatten)]
     pub metrics: Option<MetricsConfig>,
+
+    /// File to load configuration options from
+    #[arg(long)]
+    pub config_file: Option<String>,
 }
 
-impl AppArgs {
-    pub fn to_miasma_config(&self) -> MiasmaConfig {
-        let mut builder = MiasmaConfig::builder();
-        builder
-            .max_in_flight(self.max_in_flight)
-            .link_count(self.link_count)
-            .link_prefix(&self.link_prefix)
-            .force_gzip(self.force_gzip)
-            .unsafe_allow_html(self.unsafe_allow_html)
-            .poison_source(self.poison_source.clone());
-
-        if let Some(d) = self.max_depth.0 {
-            builder.max_depth(d);
-        }
-        if let Some(m) = &self.metrics {
-            let credentials = m
-                .metrics_credentials
-                .as_ref()
-                .expect("credentials should be Some if MetricsConfig is Some");
-            builder.metrics(
-                m.metrics_db_path
-                    .as_ref()
-                    .expect("db path should be Some if MetricsConfig is Some"),
-                &m.metrics_endpoint,
-                &credentials.username,
-                &credentials.password,
-            );
-        }
-
-        builder.build()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct MaxDepth(pub Option<u32>);
-
-impl Display for MaxDepth {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.0 {
-            Some(v) => f.write_str(&v.to_string()),
-            None => f.write_str("none"),
-        }
-    }
-}
-
-impl FromStr for MaxDepth {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("none") {
-            return Ok(Self(None));
-        }
-        match s.parse::<u32>() {
-            Ok(v) => Ok(Self(Some(v))),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-/// If this value is Some, all sub-fields will also be Some
-#[derive(Args, Debug, Clone)]
-#[allow(clippy::struct_field_names)]
-pub struct MetricsConfig {
-    #[allow(clippy::doc_markdown)]
-    /// Path to SQLite database file (e.g. 'miasma.db')
-    #[arg(long, requires = "metrics_credentials")]
-    #[arg(help_heading = "Metrics Options")]
-    pub metrics_db_path: Option<String>,
-
-    /// Basic auth credentials required to access request metrics -
-    /// must match format '<username>:<password>'
-    #[arg(long, requires = "metrics_db_path")]
-    #[arg(help_heading = "Metrics Options")]
-    pub metrics_credentials: Option<MetricsCredentials>,
-
-    /// Endpoint at which request metrics will be served
-    #[arg(
-        long, default_value = "/metrics",
-        requires_all = ["metrics_db_path", "metrics_credentials"],
-    )]
-    #[arg(help_heading = "Metrics Options")]
-    pub metrics_endpoint: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct MetricsCredentials {
-    username: String,
-    password: String,
-}
-
-impl Display for MetricsCredentials {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}:******", self.username))
-    }
-}
-
-impl FromStr for MetricsCredentials {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some((username, password)) = s.split_once(':') else {
-            return Err("credentials must match format '<username>:<password>'");
-        };
-        if username.is_empty() {
-            return Err("username must not be empty");
-        }
-        if password.is_empty() {
-            return Err("password must not be empty");
-        }
-        Ok(Self {
-            username: username.to_owned(),
-            password: password.to_owned(),
-        })
-    }
+use thiserror::Error;
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error(transparent)]
+    Yaml(serde_yaml::Error),
+    #[error(transparent)]
+    Json(serde_json::Error),
+    #[error(transparent)]
+    Toml(toml::de::Error),
+    #[error("The config language is not supported")]
+    UnsupportedLanguage,
+    #[error(transparent)]
+    FileRead(#[from] std::io::Error),
 }
 
 impl AppArgs {
     pub fn parse_args() -> Self {
-        <AppArgs as Parser>::parse()
+        let args = <AppArgs as Parser>::parse();
+        if let Some(file) = args.config_file {
+            match Self::load_from_file(&file) {
+                Ok(a) => return a,
+                Err(e) => {
+                    eprintln!("Failed to load config from file: {e}");
+                    std::process::exit(2);
+                }
+            }
+        }
+        args
+    }
+
+    fn load_from_file(file: &str) -> Result<Self, ParseError> {
+        let conf = std::fs::read_to_string(file)?;
+        let file = file.to_lowercase();
+        #[allow(clippy::case_sensitive_file_extension_comparisons)]
+        let conf = if file.ends_with(".json") {
+            serde_json::from_str::<ConfigFile>(&conf).map_err(ParseError::Json)
+        } else if file.ends_with(".yaml") {
+            serde_yaml::from_str::<ConfigFile>(&conf).map_err(ParseError::Yaml)
+        } else if file.ends_with(".toml") {
+            toml::from_str::<ConfigFile>(&conf).map_err(ParseError::Toml)
+        } else {
+            Err(ParseError::UnsupportedLanguage)
+        }?;
+        #[cfg(not(unix))]
+        if conf.server.unix_socket.is_some() {
+            eprintln!("Cannot use unix sockets on non-unix host, ignoring");
+        }
+        Ok(AppArgs {
+            max_in_flight: conf.max_in_flight,
+            link_prefix: conf.link_prefix,
+            link_count: conf.link_count,
+            force_gzip: conf.force_gzip,
+            unsafe_allow_html: conf.unsafe_allow_html,
+            max_depth: conf.max_depth,
+            metrics: conf.metrics,
+            poison_source: Url::parse(&conf.poison_source).expect("Default value should exist"),
+            #[cfg(unix)]
+            unix_socket: conf.server.unix_socket,
+            host: conf.server.host.expect("Default value should exist"),
+            port: conf.server.port.expect("Default value should exist"),
+            config_file: None,
+        })
     }
 
     /// Print configuration information to stderr.
@@ -250,12 +201,207 @@ impl AppArgs {
     pub fn address(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
+
+    pub fn to_miasma_config(&self) -> MiasmaConfig {
+        let mut builder = MiasmaConfig::builder();
+        builder
+            .max_in_flight(self.max_in_flight)
+            .link_count(self.link_count)
+            .link_prefix(&self.link_prefix)
+            .force_gzip(self.force_gzip)
+            .unsafe_allow_html(self.unsafe_allow_html)
+            .poison_source(self.poison_source.clone());
+
+        if let Some(d) = self.max_depth.0 {
+            builder.max_depth(d);
+        }
+        if let Some(m) = &self.metrics {
+            let credentials = m
+                .metrics_credentials
+                .as_ref()
+                .expect("credentials should be Some if MetricsConfig is Some");
+            builder.metrics(
+                m.metrics_db_path
+                    .as_ref()
+                    .expect("db path should be Some if MetricsConfig is Some"),
+                &m.metrics_endpoint,
+                &credentials.username,
+                &credentials.password,
+            );
+        }
+
+        builder.build()
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct MaxDepth(pub Option<u32>);
+
+impl Display for MaxDepth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Some(v) => f.write_str(&v.to_string()),
+            None => f.write_str("none"),
+        }
+    }
+}
+
+impl FromStr for MaxDepth {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq_ignore_ascii_case("none") {
+            return Ok(Self(None));
+        }
+        match s.parse::<u32>() {
+            Ok(v) => Ok(Self(Some(v))),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+/// If this value is Some, all sub-fields will also be Some
+#[derive(Args, Debug, Clone, Deserialize)]
+#[allow(clippy::struct_field_names)]
+pub struct MetricsConfig {
+    #[allow(clippy::doc_markdown)]
+    /// Path to SQLite database file (e.g. 'miasma.db')
+    #[arg(long, requires = "metrics_credentials")]
+    #[arg(help_heading = "Metrics Options")]
+    #[serde(rename = "db_path")]
+    pub metrics_db_path: Option<String>,
+
+    /// Basic auth credentials required to access request metrics -
+    /// must match format '<username>:<password>'
+    #[arg(long, requires = "metrics_db_path")]
+    #[arg(help_heading = "Metrics Options")]
+    #[serde(rename = "credentials")]
+    pub metrics_credentials: Option<MetricsCredentials>,
+
+    /// Endpoint at which request metrics will be served
+    #[arg(
+        long, default_value = "/metrics",
+        requires_all = ["metrics_db_path", "metrics_credentials"],
+    )]
+    #[arg(help_heading = "Metrics Options")]
+    #[serde(rename = "endpoint", default = "default_endpoint")]
+    pub metrics_endpoint: String,
+}
+
+fn default_endpoint() -> String {
+    String::from("/metrics")
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(try_from = "&str")]
+pub struct MetricsCredentials {
+    username: String,
+    password: String,
+}
+
+impl Display for MetricsCredentials {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}:******", self.username))
+    }
+}
+
+impl FromStr for MetricsCredentials {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some((username, password)) = s.split_once(':') else {
+            return Err("credentials must match format '<username>:<password>'");
+        };
+        if username.is_empty() {
+            return Err("username must not be empty");
+        }
+        if password.is_empty() {
+            return Err("password must not be empty");
+        }
+        Ok(Self {
+            username: username.to_owned(),
+            password: password.to_owned(),
+        })
+    }
+}
+
+impl TryFrom<&str> for MetricsCredentials {
+    type Error = &'static str;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Self::from_str(s)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(default)]
+struct ConfigFile {
+    max_in_flight: u32,
+    link_prefix: String,
+    link_count: u8,
+    max_depth: MaxDepth,
+    force_gzip: bool,
+    unsafe_allow_html: bool,
+    poison_source: String,
+    server: ServerConf,
+    metrics: Option<MetricsConfig>,
+}
+
+impl Default for ConfigFile {
+    fn default() -> Self {
+        ConfigFile {
+            max_in_flight: miasma::DEFAULT_MAX_IN_FLIGHT,
+            link_prefix: String::from("/"),
+            link_count: miasma::DEFAULT_LINK_COUNT,
+            max_depth: MaxDepth(None),
+            unsafe_allow_html: false,
+            force_gzip: false,
+            poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
+            metrics: None,
+            server: ServerConf {
+                host: Some(DEFAULT_HOST.to_string()),
+                port: Some(DEFAULT_PORT),
+                unix_socket: None,
+            },
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct ServerConf {
+    host: Option<String>,
+    port: Option<u16>,
+    unix_socket: Option<String>,
+}
+
+#[cfg(test)]
+impl Default for AppArgs {
+    fn default() -> Self {
+        Self {
+            #[cfg(unix)]
+            unix_socket: None,
+            port: DEFAULT_PORT,
+            host: DEFAULT_HOST.to_string(),
+            max_in_flight: Default::default(),
+            link_prefix: String::default(),
+            link_count: Default::default(),
+            force_gzip: Default::default(),
+            unsafe_allow_html: Default::default(),
+            metrics: None,
+            max_depth: MaxDepth(None),
+            poison_source: Url::parse("https://example.com").unwrap(),
+            config_file: None,
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use base64::prelude::*;
+
+    use std::io::Write;
+    use tempfile::Builder;
 
     #[test]
     fn to_miasma_config() {
@@ -282,6 +428,8 @@ mod test {
                 }),
                 metrics_endpoint: "/serve-metrics".to_owned(),
             }),
+
+            config_file: None,
         };
 
         let config = args.to_miasma_config();
@@ -318,6 +466,7 @@ mod test {
             metrics: None,
             max_depth: MaxDepth(None),
             poison_source: Url::parse("https://example.com").unwrap(),
+            config_file: None,
         };
 
         assert_eq!(config.address(), "127.0.0.1:8080");
@@ -342,5 +491,109 @@ mod test {
                 }
             }
         }
+    }
+
+    fn check_correct_config(config: AppArgs) {
+        assert_eq!(config.max_in_flight, 8);
+        assert_eq!(config.link_prefix, "test");
+        assert_eq!(config.link_count, 8);
+        assert_eq!(config.max_depth, MaxDepth(Some(8)));
+        assert_eq!(
+            config.poison_source,
+            Url::parse("https://example.com/").unwrap()
+        );
+        assert!(config.force_gzip);
+        assert!(config.unsafe_allow_html);
+
+        let metrics = config.metrics.unwrap();
+        assert_eq!(metrics.metrics_db_path, Some("miasma.db".to_owned()));
+        assert_eq!(metrics.metrics_endpoint, "/serve-metrics".to_owned());
+        assert_eq!(
+            metrics.metrics_credentials,
+            Some(MetricsCredentials {
+                username: "admin".to_owned(),
+                password: "admin".to_owned()
+            })
+        );
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.host, "127.0.0.1".to_owned());
+        #[cfg(unix)]
+        assert_eq!(config.unix_socket, Some("miasma.sock".to_owned()));
+    }
+
+    #[test]
+    fn load_json() -> Result<(), std::io::Error> {
+        let text = r#"{
+          "max_in_flight": 8,
+          "link_prefix": "test",
+          "link_count": 8,
+          "max_depth": 8,
+          "force_gzip": true,
+          "unsafe_allow_html": true,
+          "poison_source": "https://example.com/",
+          "server": {
+            "port": 8080,
+            "host": "127.0.0.1",
+            "unix_socket": "miasma.sock"
+          },
+          "metrics": {
+            "db_path": "miasma.db",
+            "credentials": "admin:admin",
+            "endpoint": "/serve-metrics"
+          }
+        }"#;
+        let mut file = Builder::new().suffix(".json").tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs::load_from_file(&format!("{}", file.path().display())).unwrap();
+        check_correct_config(config);
+        Ok(())
+    }
+
+    #[test]
+    fn load_yaml() -> Result<(), std::io::Error> {
+        let text = "max_in_flight: 8
+link_prefix: test
+link_count: 8
+max_depth: 8
+force_gzip: true
+unsafe_allow_html: true
+poison_source: https://example.com/
+server:
+  port: 8080
+  host: 127.0.0.1
+  unix_socket: miasma.sock
+metrics:
+  db_path: miasma.db
+  credentials: admin:admin
+  endpoint: /serve-metrics";
+        let mut file = Builder::new().suffix(".yaml").tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs::load_from_file(&format!("{}", file.path().display())).unwrap();
+        check_correct_config(config);
+        Ok(())
+    }
+
+    #[test]
+    fn load_toml() -> Result<(), std::io::Error> {
+        let text = r#"max_in_flight = 8
+link_prefix = "test"
+link_count = 8
+max_depth = 8
+force_gzip = true
+unsafe_allow_html = true
+poison_source = "https://example.com/"
+[server]
+  port = 8080
+  host = "127.0.0.1"
+  unix_socket = "miasma.sock"
+[metrics]
+  db_path = "miasma.db"
+  credentials = "admin:admin"
+  endpoint = "/serve-metrics""#;
+        let mut file = Builder::new().suffix(".toml").tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs::load_from_file(&format!("{}", file.path().display())).unwrap();
+        check_correct_config(config);
+        Ok(())
     }
 }
