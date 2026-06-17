@@ -11,6 +11,9 @@ use miasma::MiasmaConfig;
 use serde::Deserialize;
 use url::Url;
 
+const DEFAULT_HOST: &str = "localhost";
+const DEFAULT_PORT: u16 = 9999;
+
 #[derive(Parser, Debug, Clone)]
 #[command(
     version,
@@ -18,12 +21,12 @@ use url::Url;
 )]
 pub struct AppArgs {
     /// Port to listen for requests
-    #[arg(short = 'p', long, default_value_t = 9999)]
+    #[arg(short = 'p', long, default_value_t = DEFAULT_PORT)]
     #[arg(help_heading = "Server Options")]
     pub port: u16,
 
     /// Host to listen for requests
-    #[arg(long, env = "MIASMA_HOST", default_value_t = String::from("localhost") )]
+    #[arg(long, env = "MIASMA_HOST", default_value_t = DEFAULT_HOST.to_string() )]
     #[arg(help_heading = "Server Options")]
     pub host: String,
 
@@ -76,47 +79,47 @@ pub enum ParseError {
     Yaml(serde_yaml::Error),
     #[error(transparent)]
     Json(serde_json::Error),
+    #[error(transparent)]
+    Toml(toml::de::Error),
+    #[error("The config language is not supported")]
+    UnsupportedLanguage,
+    #[error(transparent)]
+    FileRead(#[from] std::io::Error),
 }
 
 impl AppArgs {
     pub fn parse_args() -> Self {
         let args = <AppArgs as Parser>::parse();
-        if args.config_file.is_some() {
-            return args.load_from_file();
+        if let Some(file) = args.config_file {
+            match Self::load_from_file(&file) {
+                Ok(a) => return a,
+                Err(e) => {
+                    eprintln!("Failed to load config from file: {e}");
+                    std::process::exit(2);
+                }
+            }
         }
         args
     }
 
-    pub fn load_from_file(&self) -> Self {
-        let file = self.config_file.as_ref().expect("Should be set");
-        let conf = match std::fs::read_to_string(file) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Cannot read the provided config file: {e}");
-                std::process::exit(2);
-            }
-        };
+    fn load_from_file(file: &str) -> Result<Self, ParseError> {
+        let conf = std::fs::read_to_string(file)?;
         let file = file.to_lowercase();
         #[allow(clippy::case_sensitive_file_extension_comparisons)]
-        let conf = match if file.ends_with(".json") {
+        let conf = if file.ends_with(".json") {
             serde_json::from_str::<ConfigFile>(&conf).map_err(ParseError::Json)
         } else if file.ends_with(".yaml") {
             serde_yaml::from_str::<ConfigFile>(&conf).map_err(ParseError::Yaml)
+        } else if file.ends_with(".toml") {
+            toml::from_str::<ConfigFile>(&conf).map_err(ParseError::Toml)
         } else {
-            eprintln!("Config language is not currently supported");
-            std::process::exit(2);
-        } {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Cannot parse the config: {e}");
-                std::process::exit(2);
-            }
-        };
+            Err(ParseError::UnsupportedLanguage)
+        }?;
         #[cfg(not(unix))]
         if conf.server.unix_socket.is_some() {
             eprintln!("Cannot use unix sockets on non-unix host, ignoring");
         }
-        AppArgs {
+        Ok(AppArgs {
             max_in_flight: conf.max_in_flight,
             link_prefix: conf.link_prefix,
             link_count: conf.link_count,
@@ -127,10 +130,10 @@ impl AppArgs {
             poison_source: Url::parse(&conf.poison_source).expect("Default value should exist"),
             #[cfg(unix)]
             unix_socket: conf.server.unix_socket,
-            host: conf.server.host,
-            port: conf.server.port,
+            host: conf.server.host.expect("Default value should exist"),
+            port: conf.server.port.expect("Default value should exist"),
             config_file: None,
-        }
+        })
     }
 
     /// Print configuration information to stderr.
@@ -356,8 +359,8 @@ impl Default for ConfigFile {
             poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
             metrics: None,
             server: ServerConf {
-                host: String::from("127.0.0.1"),
-                port: 9999,
+                host: Some(DEFAULT_HOST.to_string()),
+                port: Some(DEFAULT_PORT),
                 unix_socket: None,
             },
         }
@@ -366,9 +369,30 @@ impl Default for ConfigFile {
 
 #[derive(Deserialize)]
 struct ServerConf {
-    host: String,
-    port: u16,
+    host: Option<String>,
+    port: Option<u16>,
     unix_socket: Option<String>,
+}
+
+#[cfg(test)]
+impl Default for AppArgs {
+    fn default() -> Self {
+        Self {
+            #[cfg(unix)]
+            unix_socket: None,
+            port: DEFAULT_PORT,
+            host: DEFAULT_HOST.to_string(),
+            max_in_flight: Default::default(),
+            link_prefix: String::default(),
+            link_count: Default::default(),
+            force_gzip: Default::default(),
+            unsafe_allow_html: Default::default(),
+            metrics: None,
+            max_depth: MaxDepth(None),
+            poison_source: Url::parse("https://example.com").unwrap(),
+            config_file: None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -469,45 +493,7 @@ mod test {
         }
     }
 
-    #[test]
-    fn load_json() -> Result<(), std::io::Error> {
-        let text = "{
-          \"max_in_flight\": 8,
-          \"link_prefix\": \"test\",
-          \"link_count\": 8,
-          \"max_depth\": 8,
-          \"force_gzip\": true,
-          \"unsafe_allow_html\": true,
-          \"poison_source\": \"https://example.com/\",
-          \"server\": {
-            \"port\": 8080,
-            \"host\": \"127.0.0.1\"
-          },
-          \"metrics\": {
-            \"db_path\": \"miasma.db\",
-            \"credentials\": \"admin:admin\",
-            \"endpoint\": \"/serve-metrics\"
-          }
-        }";
-        let mut file = Builder::new().suffix(".json").tempfile()?;
-        write!(file, "{text}")?;
-        let config = AppArgs {
-            #[cfg(unix)]
-            unix_socket: None,
-            port: 9999,
-            host: String::new(),
-            max_in_flight: Default::default(),
-            link_prefix: String::default(),
-            link_count: Default::default(),
-            force_gzip: Default::default(),
-            unsafe_allow_html: Default::default(),
-            metrics: None,
-            max_depth: MaxDepth(None),
-            poison_source: Url::parse("https://example.com").unwrap(),
-            config_file: Some(format!("{}", file.path().display())),
-        };
-        let config = config.load_from_file();
-
+    fn check_correct_config(config: AppArgs) {
         assert_eq!(config.max_in_flight, 8);
         assert_eq!(config.link_prefix, "test");
         assert_eq!(config.link_count, 8);
@@ -529,6 +515,37 @@ mod test {
                 password: "admin".to_owned()
             })
         );
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.host, "127.0.0.1".to_owned());
+        #[cfg(unix)]
+        assert_eq!(config.unix_socket, Some("miasma.sock".to_owned()));
+    }
+
+    #[test]
+    fn load_json() -> Result<(), std::io::Error> {
+        let text = r#"{
+          "max_in_flight": 8,
+          "link_prefix": "test",
+          "link_count": 8,
+          "max_depth": 8,
+          "force_gzip": true,
+          "unsafe_allow_html": true,
+          "poison_source": "https://example.com/",
+          "server": {
+            "port": 8080,
+            "host": "127.0.0.1",
+            "unix_socket": "miasma.sock"
+          },
+          "metrics": {
+            "db_path": "miasma.db",
+            "credentials": "admin:admin",
+            "endpoint": "/serve-metrics"
+          }
+        }"#;
+        let mut file = Builder::new().suffix(".json").tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs::load_from_file(&format!("{}", file.path().display())).unwrap();
+        check_correct_config(config);
         Ok(())
     }
 
@@ -544,50 +561,39 @@ poison_source: https://example.com/
 server:
   port: 8080
   host: 127.0.0.1
+  unix_socket: miasma.sock
 metrics:
   db_path: miasma.db
   credentials: admin:admin
   endpoint: /serve-metrics";
         let mut file = Builder::new().suffix(".yaml").tempfile()?;
         write!(file, "{text}")?;
-        let config = AppArgs {
-            #[cfg(unix)]
-            unix_socket: None,
-            port: 9999,
-            host: String::new(),
-            max_in_flight: Default::default(),
-            link_prefix: String::default(),
-            link_count: Default::default(),
-            force_gzip: Default::default(),
-            unsafe_allow_html: Default::default(),
-            metrics: None,
-            max_depth: MaxDepth(None),
-            poison_source: Url::parse("https://example.com").unwrap(),
-            config_file: Some(format!("{}", file.path().display())),
-        };
-        let config = config.load_from_file();
+        let config = AppArgs::load_from_file(&format!("{}", file.path().display())).unwrap();
+        check_correct_config(config);
+        Ok(())
+    }
 
-        assert_eq!(config.max_in_flight, 8);
-        assert_eq!(config.link_prefix, "test");
-        assert_eq!(config.link_count, 8);
-        assert_eq!(config.max_depth, MaxDepth(Some(8)));
-        assert_eq!(
-            config.poison_source,
-            Url::parse("https://example.com/").unwrap()
-        );
-        assert!(config.force_gzip);
-        assert!(config.unsafe_allow_html);
-
-        let metrics = config.metrics.unwrap();
-        assert_eq!(metrics.metrics_db_path, Some("miasma.db".to_owned()));
-        assert_eq!(metrics.metrics_endpoint, "/serve-metrics".to_owned());
-        assert_eq!(
-            metrics.metrics_credentials,
-            Some(MetricsCredentials {
-                username: "admin".to_owned(),
-                password: "admin".to_owned()
-            })
-        );
+    #[test]
+    fn load_toml() -> Result<(), std::io::Error> {
+        let text = r#"max_in_flight = 8
+link_prefix = "test"
+link_count = 8
+max_depth = 8
+force_gzip = true
+unsafe_allow_html = true
+poison_source = "https://example.com/"
+[server]
+  port = 8080
+  host = "127.0.0.1"
+  unix_socket = "miasma.sock"
+[metrics]
+  db_path = "miasma.db"
+  credentials = "admin:admin"
+  endpoint = "/serve-metrics""#;
+        let mut file = Builder::new().suffix(".toml").tempfile()?;
+        write!(file, "{text}")?;
+        let config = AppArgs::load_from_file(&format!("{}", file.path().display())).unwrap();
+        check_correct_config(config);
         Ok(())
     }
 }
