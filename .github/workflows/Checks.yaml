@@ -17,7 +17,9 @@ jobs:
     env:
       RUSTFLAGS: "-Dwarnings"
     steps:
+      - run: rustup toolchain install stable
       - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
 
       - name: Validate Build
         run: cargo build
@@ -34,12 +36,23 @@ jobs:
       - name: Verify Publish-Ready
         run: cargo publish --dry-run
 
+  Docker-Image-Test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build Image
+        uses: docker/build-push-action@v7
+        with:
+          push: false
+          load: true
+          tags: miasma:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Test Docker Image
-        if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
-
-          docker build -t miasma:test .
 
           container_id=$(docker run -d --rm \
             -p 9999:9999 \

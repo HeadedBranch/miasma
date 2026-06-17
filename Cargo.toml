@@ -1,14 +1,14 @@
 [package]
 name = "miasma"
 description = "Trap malicious AI web scrapers in an endless pit of poisoned training data."
-keywords = ["ai", "anti-ai", "web-scraping", "security", "cli", "server"]
+keywords = ["ai", "anti-ai", "web-scraping", "cli", "server"]
 categories = ["artificial-intelligence", "command-line-utilities", "development-tools", "security"]
-version = "0.2.8"
+version = "0.2.9"
 edition = "2024"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/austin-weeks/miasma"
 readme = "README.md"
-exclude = [".github", "nix", "flake.lock", "flake.nix", "Dockerfile", "CONTRIBUTING.md", "Justfile"]
+include = ["README.md", "LICENSE", "src", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
 async-compression = { version = "0.4.41", features = ["gzip"] }
@@ -65,4 +65,4 @@ opt-level = "s"
 lto = true
 debug = false
 strip = true
-panic = "abort"
+panic = "unwind"

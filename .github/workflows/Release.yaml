@@ -54,7 +54,9 @@ jobs:
     needs: Run-Checks
     runs-on: ubuntu-latest
     steps:
+      - run: rustup toolchain install stable
       - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
 
       - name: Publish to crates.io
         run: |
@@ -100,10 +102,12 @@ jobs:
           - [windows-11-arm, miasma-windows-ARM64.exe]
     runs-on: ${{ matrix.build[0] }}
     steps:
+      - run: rustup toolchain install stable --profile minimal
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.Push-Tag.outputs.github_tag }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build Binary
         run: cargo build --release
@@ -166,6 +170,8 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
           tags: |
             austinweeks/miasma:${{ inputs.version }}
