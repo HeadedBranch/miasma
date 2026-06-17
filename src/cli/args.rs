@@ -127,11 +127,12 @@ impl AppArgs {
             unsafe_allow_html: conf.unsafe_allow_html,
             max_depth: conf.max_depth,
             metrics: conf.metrics,
-            poison_source: Url::parse(&conf.poison_source).expect("Default value should exist"),
+            poison_source: Url::parse(&conf.poison_source)
+                .expect("Default value for poison source should exist"),
             #[cfg(unix)]
             unix_socket: conf.server.unix_socket,
-            host: conf.server.host.expect("Default value should exist"),
-            port: conf.server.port.expect("Default value should exist"),
+            host: conf.server.host.expect("Default host value should exist"),
+            port: conf.server.port.expect("Default port value should exist"),
             config_file: None,
         })
     }
@@ -358,20 +359,27 @@ impl Default for ConfigFile {
             force_gzip: false,
             poison_source: String::from(miasma::DEFAULT_POISON_SOURCE),
             metrics: None,
-            server: ServerConf {
-                host: Some(DEFAULT_HOST.to_string()),
-                port: Some(DEFAULT_PORT),
-                unix_socket: None,
-            },
+            server: ServerConf::default(),
         }
     }
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct ServerConf {
     host: Option<String>,
     port: Option<u16>,
     unix_socket: Option<String>,
+}
+
+impl Default for ServerConf {
+    fn default() -> Self {
+        ServerConf {
+            host: Some(DEFAULT_HOST.to_string()),
+            port: Some(DEFAULT_PORT),
+            unix_socket: None,
+        }
+    }
 }
 
 #[cfg(test)]
