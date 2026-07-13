@@ -14,11 +14,12 @@ diesel::table! {
     user_agents (agent) {
         agent -> Text,
         count -> BigInt,
+        sent_data -> BigInt,
     }
 }
 
 pub struct Metrics {
-    counts: HashMap<String, i64>,
+    counts: HashMap<String, (i64, i64)>,
     unflushed_count: u32,
     db_path: String,
 }
@@ -32,7 +33,8 @@ impl Metrics {
         diesel::sql_query(
             "CREATE TABLE IF NOT EXISTS user_agents (
                 agent TEXT PRIMARY KEY,
-                count INTEGER NOT NULL
+                count INTEGER NOT NULL,
+                sent_data INTEGER NOT NULL
             )",
         )
         .execute(&mut conn)?;
@@ -43,8 +45,8 @@ impl Metrics {
         })
     }
 
-    /// Increment the request count for the supplied user agent by one.
-    pub fn count_request(&mut self, user_agent: &str) {
+    /// Increment the request count for the supplied user agent by one and count sent bytes
+    pub fn count_request(&mut self, user_agent: &str, sent_bytes: i64) {
         // Truncate the user agent string to ensure we don't store massive values.
         // There's a very small chance that scrapers have big ole user agents and
         // might try to exploit the fact that we're storing them.
@@ -54,9 +56,10 @@ impl Metrics {
             .collect();
         self.unflushed_count += 1;
         if let Some(c) = self.counts.get_mut(&truncated_user_agent) {
-            *c += 1;
+            c.0 += 1;
+            c.1 += sent_bytes;
         } else {
-            self.counts.insert(truncated_user_agent, 1);
+            self.counts.insert(truncated_user_agent, (1, sent_bytes));
         }
         if self.unflushed_count >= Metrics::MAX_UNFLUSHED_COUNT {
             self.unflushed_count = 0;
@@ -85,19 +88,23 @@ impl Metrics {
     pub fn list_useragents_by_count(
         &mut self,
         page: u32,
-    ) -> Result<Vec<(String, i64)>, MetricsError> {
+    ) -> Result<Vec<(String, (i64, i64))>, MetricsError> {
         let offset = page.saturating_sub(1) * RESULTS_PER_PAGE;
         let mut conn = SqliteConnection::establish(&self.db_path)?;
         let entries = user_agents
             .order_by(count.desc())
             .limit(RESULTS_PER_PAGE as i64)
             .offset(offset as i64)
-            .load::<(String, i64)>(&mut conn)?;
+            .load::<(String, i64, i64)>(&mut conn)?;
+        let entries = entries
+            .iter()
+            .map(|(s, c, b)| (s.clone(), (*c, *b)))
+            .collect::<Vec<_>>();
         Ok(entries)
     }
 }
 
-fn flush_to_db(counts: HashMap<String, i64>, db_path: &str) {
+fn flush_to_db(counts: HashMap<String, (i64, i64)>, db_path: &str) {
     let mut conn = match SqliteConnection::establish(db_path) {
         Ok(c) => c,
         Err(e) => {
@@ -110,7 +117,7 @@ fn flush_to_db(counts: HashMap<String, i64>, db_path: &str) {
 
     let rows = counts
         .into_iter()
-        .map(|(ua, c)| (agent.eq(ua), count.eq(c)))
+        .map(|(ua, (c, b))| (agent.eq(ua), count.eq(c), sent_data.eq(b)))
         .collect::<Vec<_>>();
 
     if let Err(e) = diesel::insert_into(user_agents)
@@ -159,9 +166,9 @@ mod test {
         .expect("failed to create test table");
 
         let expected = [
-            ("miasma/0.1".to_owned(), 5),
-            ("claudebot".to_owned(), 10),
-            ("safari".to_owned(), 15),
+            ("miasma/0.1".to_owned(), (5, 1024)),
+            ("claudebot".to_owned(), (10, 10_000)),
+            ("safari".to_owned(), (15, 25432)),
         ];
 
         flush_to_db(HashMap::from(expected.clone()), &db_file);
@@ -170,17 +177,21 @@ mod test {
             SqliteConnection::establish(&db_file).expect("failed to connect to database");
 
         let rows = user_agents
-            .load::<(String, i64)>(&mut conn)
-            .expect("failed to query test db");
+            .load::<(String, i64, i64)>(&mut conn)
+            .expect("failed to query test db")
+            .iter()
+            .map(|(s, c, b)| (s.clone(), (*c, *b)))
+            .collect::<Vec<_>>();
 
         assert_eq!(rows.len(), expected.len());
-        for (expected_ua, expected_count) in expected {
-            let (actual_ua, actual_count) = rows
+        for (expected_ua, (expected_count, expected_bytes)) in expected {
+            let (actual_ua, (actual_count, actual_bytes)) = rows
                 .iter()
-                .find(|(ua, _)| ua.as_str() == expected_ua)
+                .find(|(ua, (_, _))| ua.as_str() == expected_ua)
                 .expect("expected row not found in test db");
             assert_eq!(actual_ua, &expected_ua);
             assert_eq!(*actual_count, expected_count);
+            assert_eq!(*actual_bytes, expected_bytes);
         }
     }
 }

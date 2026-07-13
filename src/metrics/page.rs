@@ -58,7 +58,7 @@ pub async fn metrics_handler(
 
 fn stream_metrics_page(
     page_number: u32,
-    entries: Vec<(String, i64)>,
+    entries: Vec<(String, (i64, i64))>,
 ) -> impl Stream<Item = Result<Bytes, MetricsError>> {
     try_stream! {
         // 🐦‍⬛ is this a jsx? 🦋
@@ -80,12 +80,13 @@ fn stream_metrics_page(
                             <th></th>
                             <th>"User-Agent"</th>
                             <th>"Request Count"</th>
+                            <th>"Bytes Sent"</th>
                         </tr>
                     </thead>
                     <tbody>
         });
 
-        for (ind, (user_agent, count)) in entries.iter().enumerate() {
+        for (ind, (user_agent, (count, bytes))) in entries.iter().enumerate() {
             yield Bytes::from(fhtml::format!{
                         <tr>
                             <td>{ind+1 + (page_number.saturating_sub(1) * RESULTS_PER_PAGE) as usize}</td>
@@ -94,6 +95,7 @@ fn stream_metrics_page(
                             // Very unlikely but a non-zero chance...
                             <td class="user-agent">{fhtml::escape(user_agent)}</td>
                             <td class="request-count">{count}</td>
+                            <td class="request-bytes">{bytes}</td>
                         </tr>
             });
         }
@@ -130,7 +132,7 @@ mod test {
 
     #[tokio::test]
     async fn page_stream_produces_valid_html() {
-        let entries = vec![("miasma/0.1".to_owned(), 1)];
+        let entries = vec![("miasma/0.1".to_owned(), (1, 1024))];
         let page = stream_metrics_page(1, entries)
             .map(|chunk| String::from_utf8(chunk.unwrap().to_vec()).unwrap())
             .collect::<String>()

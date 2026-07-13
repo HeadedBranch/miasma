@@ -109,20 +109,22 @@ async fn app_handler(
 
     let current_depth = query.ok().and_then(|q| q.page).unwrap_or(1);
 
+    let link_settings = LinkSettings::next(&state.config, current_depth);
+
+    let (response, poison_bytes) =
+        poison::serve_poison(state.config, in_flight_permit, gzip_response, link_settings).await;
+    let response = response.into_response();
+
     if let Some(counter) = state.metrics {
         let user_agent = headers
             .get(header::USER_AGENT)
             .map_or("NO-USER-AGENT", |ua| {
                 ua.to_str().unwrap_or("INVALID-USER-AGENT-STRING")
             });
-        counter.lock().await.count_request(user_agent);
+        counter.lock().await.count_request(user_agent, poison_bytes);
     }
 
-    let link_settings = LinkSettings::next(&state.config, current_depth);
-
-    poison::serve_poison(state.config, in_flight_permit, gzip_response, link_settings)
-        .await
-        .into_response()
+    response
 }
 
 #[cfg(test)]

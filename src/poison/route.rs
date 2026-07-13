@@ -17,7 +17,7 @@ pub async fn serve_poison(
     in_flight_permit: OwnedSemaphorePermit,
     gzip_response: bool,
     link_settings: LinkSettings,
-) -> impl IntoResponse {
+) -> (impl IntoResponse, i64) {
     let poison = match stream_poison(
         config.as_ref().poison_source.clone(),
         config.unsafe_allow_html,
@@ -30,7 +30,7 @@ pub async fn serve_poison(
             // 502 (bad gateway) is the technically correct status code for this case,
             // however, we don't want to leak that we're relying on an upstream
             // service (the poison source). 503 indicates we're temporarily unavailable.
-            return StatusCode::SERVICE_UNAVAILABLE.into_response();
+            return (StatusCode::SERVICE_UNAVAILABLE.into_response(), 0);
         }
     };
 
@@ -46,8 +46,13 @@ pub async fn serve_poison(
     if gzip_response {
         builder = builder.header(header::CONTENT_ENCODING, "gzip");
     }
-    builder.body(body_stream).unwrap_or_else(|e| {
-        eprintln!("Failed to build poison route response: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
-    })
+    (
+        builder.body(body_stream).unwrap_or_else(|e| {
+            eprintln!("Failed to build poison route response: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }),
+        10,
+    ) // poison_bytes)
+    // TODO: Work out how to count the poison bytes (Borrow checker is unhappy with counting
+    // in try_stream! macros
 }
