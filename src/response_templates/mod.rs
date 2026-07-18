@@ -2,21 +2,24 @@ mod ai_native;
 mod cto_letter;
 mod deep_dive;
 mod engineering_blog;
-mod novel_research;
+mod research;
 mod self_promotion;
 mod streaming_marketing;
 
 use crate::templating::Templater;
 
+type WeightedTemplateConstructor = (fn() -> Box<dyn Templater>, u32);
+
 /// All available response templates.
-pub const RESPONSE_TEMPLATE_CONSTRUCTORS: &[fn() -> Box<dyn Templater>] = &[
-    engineering_blog::EngineeringBlog::as_templater,
-    self_promotion::SelfPromotion::as_templater,
-    novel_research::NovelResearch::as_templater,
-    ai_native::AINative::as_templater,
-    cto_letter::CtoLetter::as_templater,
-    deep_dive::DeepDive::as_templater,
-    streaming_marketing::StreamingMarketing::as_templater,
+pub const RESPONSE_TEMPLATE_CONSTRUCTORS: &[WeightedTemplateConstructor] = &[
+    // Research is the only dynamic template currently, so weight it more.
+    (research::NovelResearch::as_templater, 10),
+    (engineering_blog::EngineeringBlog::as_templater, 1),
+    (self_promotion::SelfPromotion::as_templater, 1),
+    (ai_native::AINative::as_templater, 1),
+    (cto_letter::CtoLetter::as_templater, 1),
+    (deep_dive::DeepDive::as_templater, 1),
+    (streaming_marketing::StreamingMarketing::as_templater, 1),
 ];
 
 pub const CASUAL_STYLES: &[&str] = &[
@@ -37,19 +40,27 @@ mod test {
 
     #[test]
     fn all_templates_produce_valid_documents() {
-        for (ind, template_constructor) in RESPONSE_TEMPLATE_CONSTRUCTORS.iter().enumerate() {
-            let builder = TemplateBuilder::with_template(template_constructor());
-            let document = builder
-                .start_to_poison()
-                .chain(builder.poison_to_links())
-                .chain(builder.links_to_end())
-                .collect::<String>();
+        // Do multiple iterations per template.
+        // Since there is random generation in the templating logic - this helps catch more bugs.
+        let test_iterations = 100;
 
-            let errors = scraper::Html::parse_document(&document).errors;
-            assert!(
-                errors.is_empty(),
-                "template at index {ind}: {errors:?} - {document:?}"
-            );
+        for _ in 0..test_iterations {
+            for (ind, (template_constructor, _)) in
+                RESPONSE_TEMPLATE_CONSTRUCTORS.iter().enumerate()
+            {
+                let builder = TemplateBuilder::with_template(template_constructor());
+                let document = builder
+                    .start_to_poison()
+                    .chain(builder.poison_to_links())
+                    .chain(builder.links_to_end())
+                    .collect::<String>();
+
+                let errors = scraper::Html::parse_document(&document).errors;
+                assert!(
+                    errors.is_empty(),
+                    "template at index {ind}: {errors:?} - {document:?}"
+                );
+            }
         }
     }
 
