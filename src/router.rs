@@ -120,7 +120,9 @@ async fn app_handler(
         state.poison_client,
         in_flight_permit,
         gzip_response,
-        link_settings,).await;
+        link_settings,
+    )
+    .await;
     let response = response.into_response();
 
     if let Some(counter) = state.metrics {

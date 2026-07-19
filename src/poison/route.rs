@@ -17,7 +17,7 @@ pub async fn serve_poison(
     in_flight_permit: OwnedSemaphorePermit,
     gzip_response: bool,
     link_settings: LinkSettings,
-) -> impl IntoResponse {
+) -> (impl IntoResponse, i64) {
     let poison = poison_client.stream_poison().await;
 
     let stream = response_stream::build_response_stream(poison, link_settings, in_flight_permit);
