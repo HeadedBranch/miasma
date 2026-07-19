@@ -7,9 +7,23 @@ mod template_iter;
 mod template_part;
 mod template_trait;
 mod tone;
+pub mod utils;
 
 pub use template_builder::TemplateBuilder;
 pub use template_iter::TemplateIter;
 pub use template_part::TemplatePart;
 pub use template_trait::Templater;
 pub use tone::TemplateTone;
+
+#[macro_export]
+/// Construct a `TemplateIter` from the inner contents.
+/// `TemplateIter` and `TemplatePart` must be imported and in scope.
+macro_rules! template_iter {
+    ($($part:expr),* $(,)?) => {
+        TemplateIter::new(vec![
+            $(
+                TemplatePart::from($part),
+            )*
+        ])
+    };
+}
