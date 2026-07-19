@@ -50,7 +50,10 @@ impl PoisonClient {
     ///
     /// If the poison source is unreachable or some other error occurs, a fallback poison snippet will be
     /// streamed instead.
-    pub async fn stream_poison(&self) -> impl MiasmaStream + use<> {
+    pub async fn stream_poison(
+        &self,
+        poison_bytes: std::sync::Arc<std::sync::atomic::AtomicI64>,
+    ) -> impl MiasmaStream + use<> {
         let result = self
             .breaker
             .call(
@@ -80,12 +83,18 @@ impl PoisonClient {
         try_stream! {
             if disable_html_escaping {
                 while let Some(chunk) = poison_stream.next().await {
-                    yield chunk?;
+                    let chunk = chunk?;
+                    println!("{}", chunk.len());
+                    poison_bytes.fetch_add(chunk.len() as i64, std::sync::atomic::Ordering::SeqCst);
+                    yield chunk;
                 }
             } else {
                 let mut sanitized = pin!(escape_html_stream(poison_stream));
                 while let Some(chunk) = sanitized.next().await {
-                    yield chunk?;
+                    let chunk = chunk?;
+                    println!("{}", chunk.len());
+                    poison_bytes.fetch_add(chunk.len() as i64, std::sync::atomic::Ordering::SeqCst);
+                    yield chunk;
                 }
             }
         }
@@ -109,6 +118,8 @@ mod test {
     use bytes::BytesMut;
     use tokio::net::TcpListener;
 
+    use std::sync::{Arc, atomic::AtomicI64};
+
     use super::*;
 
     async fn test_server(response: String) -> Url {
@@ -128,7 +139,7 @@ mod test {
         let url = test_server("<poison>".to_owned()).await;
         let client = PoisonClient::new(url, false);
 
-        let stream = client.stream_poison().await;
+        let stream = client.stream_poison(Arc::new(AtomicI64::new(0))).await;
         let bytes: BytesMut = stream.try_collect().await.unwrap();
         let result = String::from_utf8(bytes.to_vec()).unwrap();
 
@@ -140,7 +151,7 @@ mod test {
         let url = test_server("<poison>".to_owned()).await;
         let client = PoisonClient::new(url, true);
 
-        let stream = client.stream_poison().await;
+        let stream = client.stream_poison(Arc::new(AtomicI64::new(0))).await;
         let bytes: BytesMut = stream.try_collect().await.unwrap();
         let result = String::from_utf8(bytes.to_vec()).unwrap();
 
@@ -151,7 +162,7 @@ mod test {
     async fn default_on_failure() {
         let client = PoisonClient::new(Url::parse("http://invalid.").unwrap(), false);
 
-        let stream = client.stream_poison().await;
+        let stream = client.stream_poison(Arc::new(AtomicI64::new(0))).await;
         let bytes: BytesMut = stream.try_collect().await.unwrap();
         let result = String::from_utf8(bytes.to_vec()).unwrap();
 

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, atomic::AtomicI64};
 
 use axum::{
     Router,
@@ -116,14 +116,21 @@ async fn app_handler(
 
     let link_settings = LinkSettings::next(&state.config, current_depth);
 
-    let (response, poison_bytes) = poison::serve_poison(
+    let poison_bytes = std::sync::Arc::new(AtomicI64::new(0));
+
+    let response = poison::serve_poison(
         state.poison_client,
         in_flight_permit,
         gzip_response,
         link_settings,
+        poison_bytes.clone(),
     )
     .await;
     let response = response.into_response();
+    println!(
+        "---------{}",
+        poison_bytes.load(std::sync::atomic::Ordering::Relaxed)
+    );
 
     if let Some(counter) = state.metrics {
         let user_agent = headers
@@ -131,7 +138,10 @@ async fn app_handler(
             .map_or("NO-USER-AGENT", |ua| {
                 ua.to_str().unwrap_or("INVALID-USER-AGENT-STRING")
             });
-        counter.lock().await.count_request(user_agent, poison_bytes);
+        counter.lock().await.count_request(
+            user_agent,
+            poison_bytes.load(std::sync::atomic::Ordering::Relaxed),
+        );
     }
     response
 }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, atomic::AtomicI64};
 
 use axum::{
     body::Body,
@@ -17,8 +17,9 @@ pub async fn serve_poison(
     in_flight_permit: OwnedSemaphorePermit,
     gzip_response: bool,
     link_settings: LinkSettings,
-) -> (impl IntoResponse, i64) {
-    let poison = poison_client.stream_poison().await;
+    poison_bytes: Arc<AtomicI64>,
+) -> impl IntoResponse {
+    let poison = poison_client.stream_poison(poison_bytes).await;
 
     let stream = response_stream::build_response_stream(poison, link_settings, in_flight_permit);
 
@@ -32,13 +33,8 @@ pub async fn serve_poison(
     if gzip_response {
         builder = builder.header(header::CONTENT_ENCODING, "gzip");
     }
-    (
-        builder.body(body_stream).unwrap_or_else(|e| {
-            eprintln!("Failed to build poison route response: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }),
-        10,
-    ) // poison_bytes)
-    // TODO: Work out how to count the poison bytes (Borrow checker is unhappy with counting
-    // in try_stream! macros
+    builder.body(body_stream).unwrap_or_else(|e| {
+        eprintln!("Failed to build poison route response: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    })
 }
