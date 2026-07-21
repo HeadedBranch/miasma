@@ -1,6 +1,5 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicI64, Ordering},
 };
 
 use axum::{
@@ -119,31 +118,20 @@ async fn app_handler(
 
     let link_settings = LinkSettings::next(&state.config, current_depth);
 
-    let poison_bytes = Arc::new(AtomicI64::new(0));
+    let user_agent = headers
+        .get(header::USER_AGENT)
+        .map_or("NO-USER-AGENT", |ua| {
+            ua.to_str().unwrap_or("INVALID-USER-AGENT-STRING")
+        });
 
-    let response = poison::serve_poison(
+    poison::serve_poison(
         state.poison_client,
         in_flight_permit,
         gzip_response,
         link_settings,
-        poison_bytes.clone(),
+        state.metrics,
     )
-    .await;
-    let response = response.into_response();
-    println!("---------{}", poison_bytes.load(Ordering::Relaxed));
-
-    if let Some(counter) = state.metrics {
-        let user_agent = headers
-            .get(header::USER_AGENT)
-            .map_or("NO-USER-AGENT", |ua| {
-                ua.to_str().unwrap_or("INVALID-USER-AGENT-STRING")
-            });
-        counter
-            .lock()
-            .await
-            .count_request(user_agent, poison_bytes.load(Ordering::Relaxed));
-    }
-    response
+    .await.into_response()
 }
 
 #[cfg(test)]

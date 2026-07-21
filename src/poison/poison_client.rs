@@ -12,10 +12,9 @@ use futures::{StreamExt, TryStreamExt};
 use reqwest::Client;
 use url::Url;
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicI64, Ordering},
-};
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
 
 use crate::{
     MIASMA_USER_AGENT, MiasmaError, MiasmaStream, poison::fallback_poison,
@@ -55,7 +54,7 @@ impl PoisonClient {
     ///
     /// If the poison source is unreachable or some other error occurs, a fallback poison snippet will be
     /// streamed instead.
-    pub async fn stream_poison(&self, poison_bytes: Arc<AtomicI64>) -> impl MiasmaStream + use<> {
+    pub async fn stream_poison(&self, metrics: Option<Arc<Mutex<crate::metrics::Metrics>>>) -> impl MiasmaStream + use<> {
         let result = self
             .breaker
             .call(
@@ -83,11 +82,12 @@ impl PoisonClient {
         let disable_html_escaping = self.disable_html_escaping;
 
         try_stream! {
+            let mut byte_counter = 0;
             if disable_html_escaping {
                 while let Some(chunk) = poison_stream.next().await {
                     let chunk = chunk?;
                     println!("{}", chunk.len());
-                    poison_bytes.fetch_add(chunk.len() as i64, Ordering::Relaxed);
+                    byte_counter += chunk.len() as i64;
                     yield chunk;
                 }
             } else {
@@ -95,9 +95,15 @@ impl PoisonClient {
                 while let Some(chunk) = sanitized.next().await {
                     let chunk = chunk?;
                     println!("{}", chunk.len());
-                    poison_bytes.fetch_add(chunk.len() as i64, Ordering::Relaxed);
+                    byte_counter += chunk.len() as i64;
                     yield chunk;
                 }
+            }
+            if let Some(counter) = metrics {
+                counter
+                    .lock()
+                    .await
+                    .count_request("tmp_val", byte_counter);
             }
         }
     }

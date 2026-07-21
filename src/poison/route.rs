@@ -1,4 +1,4 @@
-use std::sync::{Arc, atomic::AtomicI64};
+use std::sync::Arc;
 
 use axum::{
     body::Body,
@@ -6,7 +6,7 @@ use axum::{
     response::IntoResponse,
 };
 use reqwest::header;
-use tokio::sync::OwnedSemaphorePermit;
+use tokio::sync::{OwnedSemaphorePermit, Mutex};
 
 use super::{LinkSettings, gzip, response_stream};
 use crate::poison::PoisonClient;
@@ -17,9 +17,9 @@ pub async fn serve_poison(
     in_flight_permit: OwnedSemaphorePermit,
     gzip_response: bool,
     link_settings: LinkSettings,
-    poison_bytes: Arc<AtomicI64>,
+    metrics: Option<Arc<Mutex<crate::metrics::Metrics>>>,
 ) -> impl IntoResponse {
-    let poison = poison_client.stream_poison(poison_bytes).await;
+    let poison = poison_client.stream_poison(metrics).await;
 
     let stream = response_stream::build_response_stream(poison, link_settings, in_flight_permit);
 
