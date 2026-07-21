@@ -30,6 +30,7 @@ impl Metrics {
 
     pub fn new(db_path: String) -> Result<Self, MetricsError> {
         let mut conn = SqliteConnection::establish(&db_path)?;
+        let db_version = diesel::sql_query("PRAGMA user_version").execute(&mut conn)?;
         diesel::sql_query(
             "CREATE TABLE IF NOT EXISTS user_agents (
                 agent TEXT PRIMARY KEY,
@@ -38,6 +39,15 @@ impl Metrics {
             )",
         )
         .execute(&mut conn)?;
+
+        if db_version < 1 {
+            diesel::sql_query(
+                "ALTER TABLE user_agents ADD sent_data INTEGER NOT NULL DEFAULT 0",
+            )
+            .execute(&mut conn)?;
+        }
+
+        diesel::sql_query("PRAGMA user_version = 1").execute(&mut conn)?;
         Ok(Self {
             db_path,
             counts: HashMap::new(),
@@ -159,7 +169,8 @@ mod test {
         diesel::sql_query(
             "CREATE TABLE user_agents (
                 agent TEXT PRIMARY KEY,
-                count INTEGER NOT NULL
+                count INTEGER NOT NULL,
+                sent_data INTEGER NOT NULL
             )",
         )
         .execute(&mut conn)

@@ -124,8 +124,6 @@ mod test {
     use bytes::BytesMut;
     use tokio::net::TcpListener;
 
-    use std::sync::{Arc, atomic::AtomicI64};
-
     use super::*;
 
     async fn test_server(response: String) -> Url {
@@ -145,7 +143,7 @@ mod test {
         let url = test_server("<poison>".to_owned()).await;
         let client = PoisonClient::new(url, false);
 
-        let stream = client.stream_poison(Arc::new(AtomicI64::new(0))).await;
+        let stream = client.stream_poison(None, String::new()).await;
         let bytes: BytesMut = stream.try_collect().await.unwrap();
         let result = String::from_utf8(bytes.to_vec()).unwrap();
 
@@ -157,7 +155,7 @@ mod test {
         let url = test_server("<poison>".to_owned()).await;
         let client = PoisonClient::new(url, true);
 
-        let stream = client.stream_poison(Arc::new(AtomicI64::new(0))).await;
+        let stream = client.stream_poison(None, String::new()).await;
         let bytes: BytesMut = stream.try_collect().await.unwrap();
         let result = String::from_utf8(bytes.to_vec()).unwrap();
 
@@ -168,7 +166,7 @@ mod test {
     async fn default_on_failure() {
         let client = PoisonClient::new(Url::parse("http://invalid.").unwrap(), false);
 
-        let stream = client.stream_poison(Arc::new(AtomicI64::new(0))).await;
+        let stream = client.stream_poison(None, String::new()).await;
         let bytes: BytesMut = stream.try_collect().await.unwrap();
         let result = String::from_utf8(bytes.to_vec()).unwrap();
 
