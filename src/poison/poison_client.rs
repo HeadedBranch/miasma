@@ -54,7 +54,7 @@ impl PoisonClient {
     ///
     /// If the poison source is unreachable or some other error occurs, a fallback poison snippet will be
     /// streamed instead.
-    pub async fn stream_poison(&self, metrics: Option<Arc<Mutex<crate::metrics::Metrics>>>) -> impl MiasmaStream + use<> {
+    pub async fn stream_poison(&self, metrics: Option<Arc<Mutex<crate::metrics::Metrics>>>, user_agent: String) -> impl MiasmaStream + use<> {
         let result = self
             .breaker
             .call(
@@ -86,7 +86,6 @@ impl PoisonClient {
             if disable_html_escaping {
                 while let Some(chunk) = poison_stream.next().await {
                     let chunk = chunk?;
-                    println!("{}", chunk.len());
                     byte_counter += chunk.len() as i64;
                     yield chunk;
                 }
@@ -94,7 +93,6 @@ impl PoisonClient {
                 let mut sanitized = pin!(escape_html_stream(poison_stream));
                 while let Some(chunk) = sanitized.next().await {
                     let chunk = chunk?;
-                    println!("{}", chunk.len());
                     byte_counter += chunk.len() as i64;
                     yield chunk;
                 }
@@ -103,7 +101,7 @@ impl PoisonClient {
                 counter
                     .lock()
                     .await
-                    .count_request("tmp_val", byte_counter);
+                    .count_request(&user_agent, byte_counter);
             }
         }
     }

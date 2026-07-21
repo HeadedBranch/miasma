@@ -124,7 +124,7 @@ fn flush_to_db(counts: HashMap<String, (i64, i64)>, db_path: &str) {
         .values(rows)
         .on_conflict(agent)
         .do_update()
-        .set(count.eq(count + excluded(count)))
+        .set((count.eq(count + excluded(count)), sent_data.eq(sent_data + excluded(sent_data))))
         .execute(&mut conn)
     {
         eprintln!(

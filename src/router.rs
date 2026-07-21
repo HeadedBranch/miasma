@@ -130,6 +130,7 @@ async fn app_handler(
         gzip_response,
         link_settings,
         state.metrics,
+        user_agent.to_string(),
     )
     .await.into_response()
 }

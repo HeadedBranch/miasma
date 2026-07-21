@@ -18,8 +18,9 @@ pub async fn serve_poison(
     gzip_response: bool,
     link_settings: LinkSettings,
     metrics: Option<Arc<Mutex<crate::metrics::Metrics>>>,
+    user_agent: String,
 ) -> impl IntoResponse {
-    let poison = poison_client.stream_poison(metrics).await;
+    let poison = poison_client.stream_poison(metrics, user_agent).await;
 
     let stream = response_stream::build_response_stream(poison, link_settings, in_flight_permit);
 
